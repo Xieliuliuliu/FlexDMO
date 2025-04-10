@@ -1,0 +1,52 @@
+# PyCharm
+.idea/
+
+# Python
+*.pyc
+*.pyo
+__pycache__/
+*.pyd
+
+# Virtual Environment
+venv/
+env/
+.venv/
+ENV/
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+
+# Test & coverage reports
+*.log
+*.tox/
+.nox/
+.coverage
+*.coverage
+nosetests.xml
+coverage.xml
+*.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# PyCharm specific settings
+.idea/*.iml
+.idea/*.ipr
+.idea/*.iws
+.idea/.name
+.idea/encodings.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/workspace.xml
