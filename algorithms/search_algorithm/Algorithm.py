@@ -22,21 +22,21 @@ class Algorithm:
         raise NotImplementedError
 
     def collect_information(self, population, problem, response_strategy):
-        # if self.history["settings"] is None:
-            # def extract_simple_attrs(obj):
-            #     return {
-            #         k: v for k, v in vars(obj).items()
-            #         if isinstance(v, (int, float, str, bool, type(None)))
-            #     }
-            #
-            # self.history["settings"] = {
-            #     "problem_class": problem.__class__.__name__,
-            #     "search_algorithm_class": self.__class__.__name__,
-            #     "response_strategy_class": response_strategy.__class__.__name__,
-            #     "problem_params": extract_simple_attrs(problem),
-            #     "search_algorithm_params": extract_simple_attrs(self),
-            #     "response_strategy_params":  extract_simple_attrs(response_strategy),
-            # }
+        if self.history["settings"] is None:
+            def extract_simple_attrs(obj):
+                return {
+                    k: v for k, v in vars(obj).items()
+                    if isinstance(v, (int, float, str, bool, type(None)))
+                }
+
+            self.history["settings"] = {
+                "problem_class": problem.__class__.__name__,
+                "search_algorithm_class": self.__class__.__name__,
+                "response_strategy_class": response_strategy.__class__.__name__,
+                "problem_params": extract_simple_attrs(problem),
+                "search_algorithm_params": extract_simple_attrs(self),
+                "response_strategy_params":  extract_simple_attrs(response_strategy),
+            }
             # os.makedirs("logs", exist_ok=True)
             # with open(f"logs/settings_info.json", "w", encoding="utf-8") as f:
             #     json.dump(self.history["settings"], f, indent=2)
@@ -56,9 +56,9 @@ class Algorithm:
             self.history["runtime"][problem.t] = {}
 
         self.history["runtime"][problem.t][problem.evaluate_time] = population.copy()
-        if self.pip is not None:
-            self.pip.send(population)
 
+        if self.pip is not None:
+            self.pip.send({"settings":self.history["settings"],'POS':problem.get_pareto_set(),"POF":problem.get_pareto_front(),"bound":[problem.xl,problem.xu],'t':problem.t, 'evaluate_times':problem.evaluate_time,'population':population})
 
     def control_process(self):
         current_state = self.state

@@ -3,7 +3,8 @@ import os
 import time
 
 
-from plots.draw_population import draw_PF
+from plots.test_module.draw_population import draw_PF
+from utils.information_parser import convert_config_to_numeric
 from views.common.GlobalVar import global_vars
 from multiprocessing import Manager, Pipe, Process
 import threading
@@ -77,15 +78,13 @@ def run_in_test_mode_process(response_strategy, search_algorithm, problem_name, 
         ProblemClass = load_main_class_from_folder(problem_name['folder_name'])
 
         # 实例化对象
-        response_instance = ResponseClass(**runtime_config['selected_dynamic'])
-        search_instance = SearchClass(**runtime_config['selected_search'], state=state,pip=child_conn)
-        problem_instance = ProblemClass(**runtime_config['selected_problem'])
+        response_instance = ResponseClass(**convert_config_to_numeric(runtime_config['selected_dynamic']))
+        search_instance = SearchClass(**convert_config_to_numeric(runtime_config['selected_search']), state=state,pip=child_conn)
+        problem_instance = ProblemClass(**convert_config_to_numeric(runtime_config['selected_problem']))
 
         search_instance.optimize(problem_instance, response_instance)
     except Exception as e:
         print(f"[Error in subprocess]: {e}")
-    finally:
-        delete_state_in_test_mode()
 
 
 def save_state_in_test_mode(state, p, parent_conn,child_conn):
@@ -94,6 +93,7 @@ def save_state_in_test_mode(state, p, parent_conn,child_conn):
     global_vars['test_module']["parent_conn"] = parent_conn
     global_vars['test_module']["child_conn"] = child_conn
     global_vars['process_manager'][p.name] = {"process_state": state, "current_process": p, "parent_conn": parent_conn, "child_conn":child_conn}
+    global_vars['test_module']["runtime_populations"] = {}
 
 
 def delete_state_in_test_mode():
@@ -109,6 +109,8 @@ def delete_state_in_test_mode():
         global_vars['test_module']["current_process"] = None
         global_vars['test_module']["parent_conn"] = None
         global_vars['test_module']["child_conn"] = None
+        global_vars['test_module']["runtime_populations"] = {}
+
 
 
 # 主进程监听 pipe
@@ -125,12 +127,13 @@ def listen_pipe(parent_conn, process):
             # 安全地 poll Pipe
             if parent_conn.poll():
                 try:
-                    population = parent_conn.recv()
-                    print(f"[主进程] 收到子进程信息：{population}")
+                    information = parent_conn.recv()
+                    # print(f"[主进程] 收到子进程信息")
+                    save_runtime_population_information(information)
                     canvas = global_vars['test_module']['canvas']
                     ax = global_vars['test_module']['ax']
                     # 更新图表
-                    draw_PF(population,ax)
+                    draw_PF(information,ax)
                     # 刷新 Canvas
                     canvas.draw()
                 except EOFError:
@@ -139,5 +142,10 @@ def listen_pipe(parent_conn, process):
     except (BrokenPipeError, OSError) as e:
         print(f"[主进程] Pipe监听异常中止: {e}")
     finally:
-        print("close parent")
+        print("[主进程] close parent")
         parent_conn.close()
+
+
+def save_runtime_population_information(information):
+    t = information["t"]
+    global_vars['test_module']["runtime_populations"][t] = information
