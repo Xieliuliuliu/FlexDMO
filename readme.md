@@ -53,7 +53,7 @@ python main.py
 📧 联系方式
 ------------------------------------------------------------
 - Issues提交地址: https://github.com/Xieliuliuliu/plateform2DMOEAS/issues
-- Email: xiejinsong@whu.edu.cn & 189818372@qq.com
+- Email: xiejinsong@whu.edu.cn & hyhhyh@whu.edu.cn
 
 🌟 感谢
 ------------------------------------------------------------
