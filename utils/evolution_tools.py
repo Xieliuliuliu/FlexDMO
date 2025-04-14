@@ -111,5 +111,6 @@ def detection(pop: Population, problem: Problem, number_detector):
                 isChange = 1
                 break
         if isChange == 1:
+            print("environment has changed")
             break
     return isChange

@@ -23,7 +23,6 @@ class NSGA2(Algorithm):
             if detection(pop, problem, int(0.1 * problem.solution_num)) == 1:
                 pop = response_strategy.response(pop, problem, self)
                 self.collect_information(pop, problem, response_strategy)  # 收集运行信息
-                print("changed")
                 continue
             # 生成子代
             offspring = self._variation(pop, problem)

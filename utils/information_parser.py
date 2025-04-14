@@ -194,3 +194,23 @@ def get_problem_config(problem_name):
                 print(f"Error reading config for {config_path}: {e}")
 
     return config_data
+
+def convert_config_to_numeric(config_dict):
+    converted = {}
+    for key, value in config_dict.items():
+        if isinstance(value, dict):
+            # 递归处理嵌套字典
+            converted[key] = convert_config_to_numeric(value)
+        elif isinstance(value, str):
+            try:
+                # 尝试转 int
+                if '.' not in value:
+                    converted[key] = int(value)
+                else:
+                    converted[key] = float(value)
+            except ValueError:
+                # 保留原样
+                converted[key] = value
+        else:
+            converted[key] = value
+    return converted

@@ -90,7 +90,7 @@ def update_label(label, fill_frame, config_type):
         def on_entry_change(event, param=param, entry=param_entry):
             # 更新全局配置，保存用户修改的值
             global_vars['test_module']['runtime_config'][config_type][param] = entry.get()
-            print(global_vars['test_module'])
+            # print(global_vars['test_module'])
 
         # 监听内容变化
         param_entry.bind("<KeyRelease>", on_entry_change)  # 监听键盘输入，实时更新
