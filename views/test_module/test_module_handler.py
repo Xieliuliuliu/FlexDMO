@@ -1,3 +1,4 @@
+import gc
 import threading
 from tkinter import ttk
 
@@ -69,6 +70,9 @@ def update_label(label, fill_frame, config_type):
         config = get_problem_config(select_item)  # 获取问题配置
     else:
         raise ValueError(f"Unknown config type: {config_type}")
+    # 确保 runtime_config 是 dict
+    if 'runtime_config' not in global_vars['test_module']:
+        global_vars['test_module']['runtime_config'] = {}
 
     # 将填空内容保存到全局变量
     global_vars['test_module']['runtime_config'][config_type] = config  # 保存配置到全局变量
@@ -144,12 +148,39 @@ def on_stop_button_click():
 
 
 def clear_canvas():
-    """清除现有的图表和控件"""
-    if 'canvas' in global_vars['test_module']:
-        canvas = global_vars['test_module']['canvas']
-        if canvas:
-            # 销毁 Tkinter 中的 canvas 控件
-            canvas.get_tk_widget().destroy()
-            # 关闭 matplotlib 图表
-            plt.close(canvas.figure)
-            global_vars['test_module']['canvas'] = None  # 清空全局变量
+    """彻底释放 Tkinter Canvas + Matplotlib Figure"""
+
+    canvas = global_vars['test_module'].get('canvas')
+    if canvas:
+        try:
+            fig = canvas.figure
+
+            # 强制清空所有 axes，patches，text
+            fig.clf()
+            fig.clear()
+
+            # 确保底层 Artist 和 Transform 不再引用
+            for ax in fig.axes:
+                ax.clear()
+            fig.axes.clear()
+
+            plt.close(fig)
+            del fig
+
+            # 销毁 Tkinter widget
+            widget = canvas.get_tk_widget()
+            if widget.winfo_exists():
+                widget.destroy()
+
+            del canvas
+            global_vars['test_module']['canvas'] = None
+
+        except Exception as e:
+            print(f"[清理失败] {e}")
+
+    if 'ax' in global_vars['test_module']:
+        del global_vars['test_module']['ax']
+
+    # 强制垃圾回收
+    import gc
+    gc.collect()

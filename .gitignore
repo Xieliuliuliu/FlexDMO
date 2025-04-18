@@ -50,3 +50,5 @@ Thumbs.db
 .idea/misc.xml
 .idea/modules.xml
 .idea/workspace.xml
+
+.results/

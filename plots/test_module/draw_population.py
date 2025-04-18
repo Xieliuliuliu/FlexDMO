@@ -23,24 +23,15 @@ def draw_PF(information, ax):
         if t_hist >= t_now:
             continue
         try:
-            pf_hist = info_hist["population"].get_objective_matrix()
+            last_key, last_value = list(info_hist.items())[-1]
+            pf_hist = last_value["population"].get_objective_matrix()
+            pof_hist = last_value["POF"]
+            ax.plot(pof_hist[:, 0], pof_hist[:, 1],
+                    linestyle='--', linewidth=1, color='orange', alpha=0.2)
             ax.scatter(pf_hist[:, 0], pf_hist[:, 1],
                        s=6, alpha=0.2, color='gray')
         except Exception as e:
-            print(f"[绘制历史PF错误] t={t_hist}, error={e}")
-            continue
-
-    # --- 绘制历史 POF（橙色，更淡） ---
-    for t_hist, info_hist in history.items():
-        if t_hist >= t_now:
-            continue
-        try:
-            pof_hist = info_hist.get("POF", None)
-            if pof_hist is not None:
-                ax.plot(pof_hist[:, 0], pof_hist[:, 1],
-                        linestyle='--', linewidth=1, color='orange', alpha=0.2)
-        except Exception as e:
-            print(f"[绘制历史POF错误] t={t_hist}, error={e}")
+            print(f"[绘制错误] t={t_hist}, error={e}")
             continue
 
     # --- 当前 PF ---

@@ -21,10 +21,16 @@ class Problem:
         self.t = 0  # 当前时间步
         self.label = label  # 问题标签
 
+        # 下次是否需要更新
+        self.need_change = False
+
     def evaluate(self, X, need_count=True, t=None):
         """
         返回目标函数值，形状：[n_samples, n_obj]
         """
+        if self.need_change:
+            self._update_time()
+            self.need_change = False
         if t is None:
             t = self.t
         F = self._evaluate_objectives(X, t)
@@ -35,7 +41,7 @@ class Problem:
             old_time = math.floor(old_num / self.change_each_evaluations)
             new_time = math.floor(self.evaluate_time / self.change_each_evaluations)
             if old_time != new_time and old_num != 0:
-                self._update_time()
+                self.need_change = True
         return F, G
 
     def _evaluate_objectives(self, X, t):
@@ -65,10 +71,10 @@ class Problem:
         return self.xl, self.xu  # 默认返回整个搜索空间
 
     def is_ended(self):
-        if self.t < self.total_change_time:
-            return False
-        else:
+        if self.need_change and self.t+1 >= self.total_change_time:
             return True
+        else:
+            return False
 
     def _update_time(self):
         """

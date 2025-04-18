@@ -5,6 +5,7 @@ import time
 
 from plots.test_module.draw_population import draw_PF
 from utils.information_parser import convert_config_to_numeric
+from utils.result_io import save_test_module_information_results
 from views.common.GlobalVar import global_vars
 from multiprocessing import Manager, Pipe, Process
 import threading
@@ -136,6 +137,9 @@ def listen_pipe(parent_conn, process):
                     draw_PF(information,ax)
                     # 刷新 Canvas
                     canvas.draw()
+                    # 如果执行完毕则对结果进行文件保存
+                    if is_runtime_over(information):
+                        save_test_module_information_results()
                 except EOFError:
                     print("[主进程] Pipe连接已关闭（EOF）")
                     break
@@ -145,7 +149,23 @@ def listen_pipe(parent_conn, process):
         print("[主进程] close parent")
         parent_conn.close()
 
+def is_runtime_over(information):
+    change_each_evaluations = information["settings"]["problem_params"]["change_each_evaluations"]
+    total_change_time = information["settings"]["problem_params"]["total_change_time"]
+    max_evaluations = change_each_evaluations * total_change_time
+    return information["evaluate_times"] >= max_evaluations
 
 def save_runtime_population_information(information):
     t = information["t"]
-    global_vars['test_module']["runtime_populations"][t] = information
+    evaluate_times = information["evaluate_times"]
+
+    # 确保 'runtime_populations' 字典存在
+    if "runtime_populations" not in global_vars['test_module']:
+        global_vars['test_module']["runtime_populations"] = {}
+
+    # 初始化该代数 t 的信息
+    if t not in global_vars['test_module']["runtime_populations"]:
+        global_vars['test_module']["runtime_populations"][t] = {}
+
+    # 保存信息
+    global_vars['test_module']["runtime_populations"][t][evaluate_times] = information

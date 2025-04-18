@@ -1,3 +1,4 @@
+from functools import partial
 from tkinter import ttk
 
 import ttkbootstrap
@@ -186,7 +187,8 @@ def create_parameter_settings(frame):
     config_for_dynamic_response.pack(pady=10, fill='x')
 
     # 监听 selected_dynamic 的变化，实时更新 Label 和填空内容
-    dynamic_response_name.trace_add("write", lambda *args: update_label(label_algo, config_for_dynamic_response, "selected_dynamic"))
+    dynamic_response_name.trace_add("write", lambda *args: update_label(label_algo, config_for_dynamic_response,
+                                                                        "selected_dynamic"))
 
     search_name = global_vars['test_module'].get("selected_search")
     label_search_algo = ttk.Label(frame, text=search_name.get(), font=("Arial", 12, "bold"), style="inverse-info", anchor='center')
@@ -207,7 +209,8 @@ def create_parameter_settings(frame):
     config_for_problem.pack(pady=10, fill='x')
 
     # 监听 selected_problem 的变化，实时更新 Label 和填空内容
-    problem_name.trace_add("write", lambda *args: update_label(label_problem_algo, config_for_problem, "selected_problem"))
+    problem_name.trace_add("write",
+                           lambda *args: update_label(label_problem_algo, config_for_problem, "selected_problem"))
 
 
 def create_result_display(frame):
@@ -248,12 +251,22 @@ def create_result_display(frame):
     # 图表区域（自适应）
     fig, ax = plt.subplots(figsize=(6, 4))
 
+    # 如果已有画布，先销毁旧画布
+    if global_vars['test_module'].get('canvas') is not None:
+        try:
+            global_vars['test_module']['canvas'].get_tk_widget().destroy()
+            global_vars['test_module']['canvas'] = None
+        except Exception as e:
+            print(f"[警告] 销毁旧画布失败: {e}")
 
+    # 创建新画布
     canvas = FigureCanvasTkAgg(fig, master=content_frame)
     canvas.draw()
     canvas.get_tk_widget().pack(side='top', fill='both', expand=True)
 
+    # 保存画布引用
     global_vars['test_module']['canvas'] = canvas
+
     global_vars['test_module']['ax'] = ax
     # 3. 底部控制面板（一行两列布局）
     bottom_frame = ttk.Frame(result_frame)

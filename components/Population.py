@@ -68,11 +68,26 @@ class Population:
         return self.individuals[idx]
 
     def to_dict(self):
-        return {
-            "decision": self.get_decision_matrix().tolist(),
-            "objective": self.get_objective_matrix().tolist(),
-            "constrain": self.get_constrain_matrix().tolist()
+        result = {
+            "decision": [],
+            "objective": [],
+            "constrain": []
         }
+
+        for ind in self.individuals:
+            result["decision"].append(ind.X.tolist())
+
+            if ind.F is not None:
+                result["objective"].append(ind.F.tolist())
+            else:
+                pass
+
+            if ind.G is not None:
+                result["constrain"].append(ind.G.tolist())
+            else:
+                pass
+
+        return result
 
     def __repr__(self):
         total = len(self.individuals)
