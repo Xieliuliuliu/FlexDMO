@@ -3,16 +3,11 @@ import tkinter as tk
 
 import ttkbootstrap as ttk
 from PIL import Image, ImageTk  # 导入Pillow库
-from Tools.scripts import objgraph
 
 from views.resources.style import set_styles
 from views.test_module.test_module_handler import clear_canvas
 from views.test_module.test_module_view import create_test_module_view
 from views.common.GlobalVar import global_vars
-
-import gc
-import tracemalloc
-import objgraph  # 如果没安装，可以注释掉这部分
 
 def create_module_switch(frame_top, selected_module):
     """创建模块切换区域"""
@@ -53,57 +48,15 @@ def create_module_switch(frame_top, selected_module):
         button_widget.image = image
         button_widget.pack(side=tk.LEFT, padx=10)
 
-
-tracemalloc.start()
-
 def on_selected_module_change(var, frame_main):
-    print("\n========== 模块切换开始 ==========\n")
-
-    # --- 垃圾回收前清理 ---
-    print("[GC] 清理前可达对象数量：", len(gc.get_objects()))
-    gc.collect()
-    print("[GC] 清理后可达对象数量：", len(gc.get_objects()))
-
-    # --- 内存快照前 ---
-    snapshot1 = tracemalloc.take_snapshot()
-
-    # --- 清空主界面控件和画布 ---
+    # 清空主界面控件和画布
     for widget in frame_main.winfo_children():
         widget.destroy()
     clear_canvas()
 
-    # --- 切换到目标模块 ---
+    # 切换到目标模块
     if var == "Test Module":
         create_test_module_view(frame_main)
-
-    # --- 内存快照后 ---
-    snapshot2 = tracemalloc.take_snapshot()
-    top_stats = snapshot2.compare_to(snapshot1, 'lineno')
-
-    print("\n[🔍 内存变化最多的前10处代码行]")
-    for stat in top_stats[:10]:
-        print(stat)
-
-    # --- 内存中对象类型统计 ---
-    print("\n[📦 当前最多的对象类型]")
-    objgraph.show_most_common_types(limit=10)
-
-    # --- 可视化 Frame 的引用链（可改为你关注的类） ---
-    try:
-        frame_objs = objgraph.by_type('Frame')
-        if frame_objs:
-            tmp_dir = os.path.expanduser("~\\AppData\\Local\\Temp")
-            filename = os.path.join(tmp_dir, 'frame_leak_backref.png')
-            objgraph.show_backrefs(
-                frame_objs[0],
-                max_depth=3,
-                filename=filename
-            )
-            print(f"[🖼️ objgraph] 已保存 Frame 的引用链图像到 {filename}")
-    except Exception as e:
-        print("[objgraph] 引用图生成失败：", e)
-
-    print("\n========== 模块切换分析完成 ==========\n")
 
 def create_menu_bar(root):
     """Create menu bar with dark theme."""

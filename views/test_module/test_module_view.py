@@ -8,7 +8,6 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from views.common.GlobalVar import global_vars
 from views.common.common_components import create_column, create_separator
 
-
 import tkinter as tk
 from tkinter import ttk
 
@@ -16,6 +15,7 @@ from views.test_module.test_module_handler import on_dynamic_select, on_search_s
     load_search_data, on_problem_select, load_problem_data, update_label, on_continue_button_click, \
     on_pause_button_click, on_stop_button_click
 
+import os
 
 def create_dynamic_strategy_section(frame):
     """创建动态策略部分"""
@@ -266,8 +266,8 @@ def create_result_display(frame):
 
     # 保存画布引用
     global_vars['test_module']['canvas'] = canvas
-
     global_vars['test_module']['ax'] = ax
+
     # 3. 底部控制面板（一行两列布局）
     bottom_frame = ttk.Frame(result_frame)
     bottom_frame.pack(side="bottom", fill='x', pady=10)
@@ -323,19 +323,19 @@ def create_result_display(frame):
         to=100,
         value=0,
         style='info.Horizontal.TScale',
-        command=lambda val: update_labels(val)  # 更新标签时，绑定进度条变化
+        state='normal'  # 始终可拖动
     )
-    scale.pack(fill='x', pady=(20, 10))  # 设置上下间距，使其垂直居中
+    scale.pack(fill='x', pady=(20, 10))
 
     # 刻度标签
     scale_labels = ttk.Frame(right_panel)
     scale_labels.pack(fill='x')
 
-    # 动态生成刻度标签，并确保它们严格与进度条一致
+    # 动态生成刻度标签
     num_labels = 11  # 刻度标签数量（0, 25, 50, 75, 100）
     for i in range(num_labels):
         ttk.Label(scale_labels,
-                  text=f"{i * (100 // (num_labels - 1))}%",  # 按照比例生成刻度
+                  text=f"{i * (100 // (num_labels - 1))}%",
                   font=("Arial", 7)
                   ).pack(side='left', expand=True)
 
@@ -348,23 +348,24 @@ def create_result_display(frame):
     current_label.pack(side='left', padx=10)
 
     # 显示总的变化次数的标签
-    total_label = ttk.Label(label_frame, text="Total Change: 100", font=("Arial", 10))
+    total_label = ttk.Label(label_frame, text="Total Change: 0", font=("Arial", 10))
     total_label.pack(side='right', padx=10)
 
-    # 更新标签内容的函数
-    def update_labels(val):
-        # 当前变化次数和总变化次数是基于进度条值的
-        current_change = int(float(val))  # Convert val to float first, then to int
+    # 保存控件引用到全局变量
+    global_vars['test_module']['scale'] = scale
+    global_vars['test_module']['current_label'] = current_label
+    global_vars['test_module']['total_label'] = total_label
 
-        total_change = 100  # 假设总变化次数为100（可以根据实际需求进行调整）
+    # 绑定进度条变化事件
+    from views.test_module.test_module_handler import on_scale_change
+    scale.configure(command=lambda val: on_scale_change(val, current_label, total_label))
 
-        current_label.config(text=f"Current Change: {current_change}")
-        total_label.config(text=f"Total Change: {total_change}")
+    # 初始更新进度控制
+    from views.test_module.test_module_handler import update_progress_control
+    update_progress_control(scale, current_label, total_label)
 
 
 def create_result_selection(frame):
-    """创建图表显示区域（一行两列底部控制面板）"""
-    # ==================== 顶部标题 ====================
     label_result = ttk.Label(frame,
                            text="Result Selection",
                            font=("Arial", 14, "bold"))
@@ -376,20 +377,50 @@ def create_result_selection(frame):
 
     # ===== 第一行：算法/问题选择 =====
     row1 = ttk.Frame(selection_frame)
-    row1.pack(fill='x', pady=(0, 5), expand=True)  # 添加expand=True
+    row1.pack(fill='x', pady=(0, 5), expand=True)
 
     # 算法选择下拉框
     algo_var = tk.StringVar()
     algo_combobox = ttk.Combobox(
         row1,
         textvariable=algo_var,
-        values=["SGEA with MOEA/D on DF1", "DM with NSGA-II on DF13"],
-        width=30,  # 明确设置宽度
+        width=30,
         state='readonly'
     )
-    algo_combobox.pack(side='left', fill='x', expand=True)  # 添加fill和expand
-    algo_combobox.set("SGEA with MOEA/D on DF1")  # 默认值
+    algo_combobox.grid(row=0, column=0, sticky='ew', padx=(0, 5))
+    row1.grid_columnconfigure(0, weight=4)  # 下拉框占据4份
 
+    # 绑定下拉框点击事件
+    def on_combobox_click(event):
+        from views.test_module.test_module_handler import update_result_combobox
+        update_result_combobox(algo_combobox)
+
+    algo_combobox.bind('<Button-1>', on_combobox_click)  # 点击时刷新列表
+
+    # 初始更新结果列表
+    from views.test_module.test_module_handler import update_result_combobox
+    update_result_combobox(algo_combobox)
+
+    # 添加加载按钮
+    def on_load_button_click():
+        from views.test_module.test_module_handler import load_selected_result, update_result_display
+        selected_result = algo_combobox.get()
+        result = load_selected_result(selected_result)
+        if result:
+            # 获取进度条
+            scale = global_vars['test_module'].get('scale')
+            
+            # 更新显示
+            update_result_display(scale, result, param_text, metric_value)
+
+    load_button = ttk.Button(
+        row1,
+        text="加载",
+        style='info.TButton',
+        command=on_load_button_click
+    )
+    load_button.grid(row=0, column=1, sticky='ew')
+    row1.grid_columnconfigure(1, weight=1)  # 按钮占据1份
 
     # ===== 第二行：指标选择 =====
     row2 = ttk.Frame(selection_frame)
@@ -428,17 +459,9 @@ def create_result_selection(frame):
     param_text.pack(fill='both', expand=True)
 
     # 初始参数内容
-    params = """<Algorithm: SGEA>
-            <Problem: FDA1>
-            N: 100
-            M: 
-            D: 
-            maxFE: 10000
-            taut: 10
-            nt: 10"""
+    params = """"""
     param_text.insert('1.0', params)
     param_text.configure(state='disabled')  # 设为只读
-
 
 def create_test_module_view(frame_main):
     # 使用grid布局调整列比例为 1:1:2:1
