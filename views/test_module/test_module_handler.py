@@ -3,6 +3,7 @@ import threading
 from tkinter import ttk
 import os
 import tkinter as tk
+import numpy as np
 
 from matplotlib import pyplot as plt
 
@@ -12,8 +13,7 @@ from utils.information_parser import get_dynamic_response_config, get_search_alg
 from utils.run_executor import run_in_test_mode, delete_state_in_test_mode, listen_pipe
 from views.common.GlobalVar import global_vars
 from utils.result_io import load_test_module_information_results
-from plots.test_module.draw_population import draw_PF
-
+from plots.test_module.draw_population import draw_IGD_curve, draw_PF, draw_selected_chart
 
 # Create a function to update the StringVars when an item is selected
 def on_dynamic_select(tv_dynamic):
@@ -134,16 +134,17 @@ def on_continue_button_click():
 
 
 def on_pause_button_click():
-    # 检查是否存在该状态
-    process_entry = global_vars.get('test_module')
-    if process_entry and process_entry['process_state'] is not None and 'process_state' in process_entry:
+    """处理暂停按钮点击事件"""
+    process_entry = global_vars.get('test_module', {})
+    if process_entry and 'process_state' in process_entry and process_entry['process_state'] is not None:
         process_entry['process_state'].value = 'pause'
     else:
         print("[主进程] 无 process_state，不执行暂停")
 
 def on_stop_button_click():
-    process_entry = global_vars.get('test_module')
-    if process_entry and process_entry['process_state'] is not None and 'process_state' in process_entry:
+    """处理停止按钮点击事件"""
+    process_entry = global_vars.get('test_module', {})
+    if process_entry and 'process_state' in process_entry and process_entry['process_state'] is not None:
         process_entry['process_state'].value = 'stop'
         delete_state_in_test_mode()
     else:
@@ -390,17 +391,102 @@ def on_scale_change(val, current_label, total_label):
                     populations.append(env_data[closest_time])
             
             # 更新图表
-            canvas = global_vars['test_module']['canvas']
-            ax = global_vars['test_module']['ax']
+            canvas = global_vars['test_module'].get('canvas')
+            ax = global_vars['test_module'].get('ax')
             
-            # 清空当前图表
-            ax.clear()
-            
-            # 绘制所有环境的种群
-            for population in populations:
-                draw_PF(population, ax)
-            
-            canvas.draw()
+            if canvas and ax:
+                # 清空当前图表
+                ax.clear()
+                
+                # 获取要显示的图表类型
+                result_to_show = global_vars['test_module'].get('result_to_show', 'Population').get()
+                
+                # 根据选择绘制相应的图表
+                if result_to_show == 'Population':
+                    # 绘制所有环境的种群
+                    for population in populations:
+                        draw_selected_chart(population, ax, 'Population')
+                elif result_to_show == 'IGD':
+                    # 绘制 IGD 曲线
+                    if populations:
+                        draw_selected_chart(populations[-1], ax, 'IGD')
+                
+                # 更新图表
+                canvas.draw()
             
     except Exception as e:
         print(f"[错误] 更新进度条时出错: {str(e)}")
+
+def update_metric_display(result, metric_name, metric_value):
+    """更新指标显示
+    
+    Args:
+        result (dict): 结果数据
+        metric_name (str): 指标名称
+        metric_value (ttk.Label): 指标显示标签
+    """
+    try:
+        # 获取所有环境的种群数据
+        runtime_populations = result.get('runtime_populations', {})
+        if not runtime_populations:
+            metric_value.config(text="0.0000")
+            return
+            
+        # 根据指标类型计算值
+        from utils.metrics import calculate_MIGD, calculate_MGD, calculate_MHV
+        if metric_name == "MIGD":
+            value = calculate_MIGD(runtime_populations)
+        elif metric_name == "MGD":
+            value = calculate_MGD(runtime_populations)
+        elif metric_name == "MHV":
+            value = calculate_MHV(runtime_populations)
+        else:
+            raise ValueError(f"Unknown metric name: {metric_name}")
+            
+        # 更新标签显示
+        metric_value.config(text=f"{value:.4f}")
+        
+    except Exception as e:
+        print(f"[错误] 更新指标显示时出错: {str(e)}")
+        metric_value.config(text="0.0000")
+
+def on_load_button_click(algo_combobox, metric_var, metric_value, param_text):
+    """处理加载按钮点击事件
+    
+    Args:
+        algo_combobox: 算法选择下拉框
+        metric_var: 指标变量
+        metric_value: 指标值显示标签
+        param_text: 参数显示文本框
+    """
+    selected_result = algo_combobox.get()
+    result = load_selected_result(selected_result)
+    if result:
+        # 获取进度条
+        scale = global_vars['test_module'].get('scale')
+        current_label = global_vars['test_module'].get('current_label')
+        total_label = global_vars['test_module'].get('total_label')
+        
+        # 更新显示
+        update_result_display(scale, result, param_text, metric_value)
+        
+        # 更新指标显示
+        update_metric_display(result, metric_var.get(), metric_value)
+        
+        # 调用 on_scale_change 更新图表
+        on_scale_change(scale.get(), current_label, total_label)
+
+def on_metric_change(event, algo_combobox, metric_var, metric_value):
+    """处理指标选择变化事件
+    
+    Args:
+        event: 事件对象
+        algo_combobox: 算法选择下拉框
+        metric_var: 指标变量
+        metric_value: 指标值显示标签
+    """
+    selected_result = algo_combobox.get()
+    if selected_result:
+        result = load_selected_result(selected_result)
+        if result:
+            update_metric_display(result, metric_var.get(), metric_value)

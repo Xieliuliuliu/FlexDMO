@@ -3,7 +3,7 @@ import os
 import time
 
 
-from plots.test_module.draw_population import draw_PF
+from plots.test_module.draw_population import draw_IGD_curve, draw_PF
 from utils.information_parser import convert_config_to_numeric
 from utils.result_io import save_test_module_information_results
 from views.common.GlobalVar import global_vars
@@ -98,19 +98,44 @@ def save_state_in_test_mode(state, p, parent_conn,child_conn):
 
 
 def delete_state_in_test_mode():
-    if "current_process" in global_vars['test_module'] and global_vars['test_module']["current_process"] is not None:
-        p = global_vars['test_module']["current_process"]
-        global_vars['test_module']["child_conn"].close()  # 显式关闭 Pipe
-        print("close child")
-        if p.is_alive():
-            p.terminate()
-            print('杀死了进程')
-        global_vars['process_manager'][p.name] = None
-        global_vars['test_module']["process_state"] = None
-        global_vars['test_module']["current_process"] = None
-        global_vars['test_module']["parent_conn"] = None
-        global_vars['test_module']["child_conn"] = None
-        global_vars['test_module']["runtime_populations"] = {}
+    """删除测试模式下的状态
+    
+    清理所有相关资源，包括进程、管道连接和全局变量
+    """
+    try:
+        # 获取 test_module 字典，如果不存在则返回空字典
+        test_module = global_vars.get('test_module', {})
+        
+        # 检查并清理进程
+        if "current_process" in test_module and test_module["current_process"] is not None:
+            p = test_module["current_process"]
+            
+            # 关闭管道连接
+            if "child_conn" in test_module and test_module["child_conn"] is not None:
+                test_module["child_conn"].close()
+                print("关闭子进程管道连接")
+            
+            # 终止进程
+            if p.is_alive():
+                p.terminate()
+                print('终止进程')
+            
+            # 清理进程管理器中的记录
+            if p.name in global_vars.get('process_manager', {}):
+                global_vars['process_manager'][p.name] = None
+        
+        # 重置所有相关状态
+        test_module["process_state"] = None
+        test_module["current_process"] = None
+        test_module["parent_conn"] = None
+        test_module["child_conn"] = None
+        test_module["runtime_populations"] = {}
+        
+    except Exception as e:
+        print(f"[错误] 清理状态时出错: {str(e)}")
+        # 即使出错也尝试清理全局变量
+        if 'test_module' in global_vars:
+            global_vars['test_module'] = {}
 
 
 
@@ -118,6 +143,11 @@ def delete_state_in_test_mode():
 def listen_pipe(parent_conn, process):
     print("[主进程] Pipe监听已启动")
     try:
+        # 在启动时禁用进度条
+        scale = global_vars['test_module'].get('scale')
+        if scale:
+            scale.configure(state='disabled')
+            
         while True:
             time.sleep(0.2)  # 避免空转
 
@@ -131,10 +161,16 @@ def listen_pipe(parent_conn, process):
                     information = parent_conn.recv()
                     # print(f"[主进程] 收到子进程信息")
                     save_runtime_population_information(information)
-                    canvas = global_vars['test_module']['canvas']
-                    ax = global_vars['test_module']['ax']
-                    # 更新图表
-                    draw_PF(information,ax)
+                    canvas = global_vars['test_module'].get('canvas')
+                    ax = global_vars['test_module'].get('ax')
+                    
+                    # 根据选择框的值决定绘制内容
+                    result_to_show = global_vars['test_module'].get('result_to_show', 'Population').get()
+                    if result_to_show == 'Population':
+                        draw_PF(information, ax)
+                    elif result_to_show == 'IGD':
+                        draw_IGD_curve(information, ax)
+                    
                     # 刷新 Canvas
                     canvas.draw()
                     # 如果执行完毕则对结果进行文件保存
@@ -147,6 +183,10 @@ def listen_pipe(parent_conn, process):
         print(f"[主进程] Pipe监听异常中止: {e}")
     finally:
         print("[主进程] close parent")
+        # 在结束时启用进度条
+        scale = global_vars['test_module'].get('scale')
+        if scale:
+            scale.configure(state='normal')
         parent_conn.close()
 
 def is_runtime_over(information):

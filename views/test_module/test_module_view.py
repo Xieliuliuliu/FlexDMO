@@ -1,21 +1,20 @@
-from functools import partial
+import tkinter as tk
 from tkinter import ttk
+from functools import partial
 
-import ttkbootstrap
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from views.common.GlobalVar import global_vars
 from views.common.common_components import create_column, create_separator
-
-import tkinter as tk
-from tkinter import ttk
-
-from views.test_module.test_module_handler import on_dynamic_select, on_search_select, load_dynamic_data, \
-    load_search_data, on_problem_select, load_problem_data, update_label, on_continue_button_click, \
-    on_pause_button_click, on_stop_button_click
-
-import os
+from views.test_module.test_module_handler import (
+    on_dynamic_select, on_search_select, load_dynamic_data,
+    load_search_data, on_problem_select, load_problem_data,
+    update_label, on_continue_button_click, on_pause_button_click,
+    on_stop_button_click, load_selected_result, update_progress_control, update_result_display,
+    on_scale_change
+)
+from plots.test_module.draw_population import draw_IGD_curve, draw_PF
 
 def create_dynamic_strategy_section(frame):
     """创建动态策略部分"""
@@ -236,13 +235,33 @@ def create_result_display(frame):
     # 创建 StringVar 并绑定到 result_choose
     result_to_show = tk.StringVar()
     # 创建 Combobox
-    result_choose = ttk.Combobox(top_frame, values=['Population',"IGD"], width=25, textvariable=result_to_show,state="readonly")
+    result_choose = ttk.Combobox(top_frame, 
+                                values=['Population', 'IGD'], 
+                                width=25, 
+                                textvariable=result_to_show,
+                                state="readonly")
 
-    # 设置默认选项为第一个
-    result_to_show.set(result_choose['values'][0])
+    # 设置默认选项为 Population
+    result_to_show.set('Population')
 
     global_vars['test_module']['result_to_show'] = result_to_show
     result_choose.pack(side="left", fill='x', expand=True)
+
+    # 绑定选择变化事件
+    def on_result_change(event):
+        # 获取当前选择的值
+        selected_value = result_to_show.get()
+        
+        # 获取进度条和标签
+        scale = global_vars['test_module'].get('scale')
+        current_label = global_vars['test_module'].get('current_label')
+        total_label = global_vars['test_module'].get('total_label')
+        
+        if scale and current_label and total_label:
+            # 调用 on_scale_change 更新图表
+            on_scale_change(scale.get(), current_label, total_label)
+    
+    result_choose.bind('<<ComboboxSelected>>', on_result_change)
 
     # 2. 中间内容区域（仅图表）
     content_frame = ttk.Frame(result_frame)
@@ -326,6 +345,11 @@ def create_result_display(frame):
         state='normal'  # 始终可拖动
     )
     scale.pack(fill='x', pady=(20, 10))
+    
+    # 保存进度条引用到全局变量
+    if 'test_module' not in global_vars:
+        global_vars['test_module'] = {}
+    global_vars['test_module']['scale'] = scale
 
     # 刻度标签
     scale_labels = ttk.Frame(right_panel)
@@ -352,16 +376,13 @@ def create_result_display(frame):
     total_label.pack(side='right', padx=10)
 
     # 保存控件引用到全局变量
-    global_vars['test_module']['scale'] = scale
     global_vars['test_module']['current_label'] = current_label
     global_vars['test_module']['total_label'] = total_label
 
     # 绑定进度条变化事件
-    from views.test_module.test_module_handler import on_scale_change
     scale.configure(command=lambda val: on_scale_change(val, current_label, total_label))
 
     # 初始更新进度控制
-    from views.test_module.test_module_handler import update_progress_control
     update_progress_control(scale, current_label, total_label)
 
 
@@ -401,27 +422,6 @@ def create_result_selection(frame):
     from views.test_module.test_module_handler import update_result_combobox
     update_result_combobox(algo_combobox)
 
-    # 添加加载按钮
-    def on_load_button_click():
-        from views.test_module.test_module_handler import load_selected_result, update_result_display
-        selected_result = algo_combobox.get()
-        result = load_selected_result(selected_result)
-        if result:
-            # 获取进度条
-            scale = global_vars['test_module'].get('scale')
-            
-            # 更新显示
-            update_result_display(scale, result, param_text, metric_value)
-
-    load_button = ttk.Button(
-        row1,
-        text="加载",
-        style='info.TButton',
-        command=on_load_button_click
-    )
-    load_button.grid(row=0, column=1, sticky='ew')
-    row1.grid_columnconfigure(1, weight=1)  # 按钮占据1份
-
     # ===== 第二行：指标选择 =====
     row2 = ttk.Frame(selection_frame)
     row2.pack(fill='x', pady=(0, 5))
@@ -431,16 +431,37 @@ def create_result_selection(frame):
     metric_combobox = ttk.Combobox(
         row2,
         textvariable=metric_var,
-        values=["GD", "IGD", "HV"],
+        values=["MIGD", "MGD", "MHV"],
         width=8,
         state='readonly'
     )
     metric_combobox.pack(side='left')
-    metric_combobox.set("GD")  # 默认值
+    metric_combobox.set("MIGD")  # 默认值
 
     # 指标值显示
-    metric_value = ttk.Label(row2, text="1.7468", font=('Arial', 10))
+    metric_value = ttk.Label(row2, text="0.0000", font=('Arial', 10))
     metric_value.pack(side='left', padx=10)
+    
+    # 绑定指标选择事件
+    def on_metric_change(event):
+        from views.test_module.test_module_handler import on_metric_change as handler_on_metric_change
+        handler_on_metric_change(event, algo_combobox, metric_var, metric_value)
+    
+    metric_combobox.bind('<<ComboboxSelected>>', on_metric_change)
+    
+    # 在加载结果时也更新指标显示
+    def on_load_button_click():
+        from views.test_module.test_module_handler import on_load_button_click as handler_on_load_button_click
+        handler_on_load_button_click(algo_combobox, metric_var, metric_value, param_text)
+
+    load_button = ttk.Button(
+        row1,
+        text="加载",
+        style='info.TButton',
+        command=on_load_button_click
+    )
+    load_button.grid(row=0, column=1, sticky='ew')
+    row1.grid_columnconfigure(1, weight=1)  # 按钮占据1份
 
     # ===== 第三行：参数显示 =====
     row3 = ttk.Frame(selection_frame)
