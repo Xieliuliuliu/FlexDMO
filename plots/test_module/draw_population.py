@@ -28,8 +28,9 @@ def draw_PF(information, ax):
             last_key, last_value = list(info_hist.items())[-1]
             pf_hist = last_value["population"].get_objective_matrix()
             pof_hist = last_value["POF"]
-            ax.plot(pof_hist[:, 0], pof_hist[:, 1],
-                    linestyle='--', linewidth=1, color='orange', alpha=0.2)
+            if pof_hist[:, 0] is not None:
+                ax.plot(pof_hist[:, 0], pof_hist[:, 1],
+                        linestyle='--', linewidth=1, color='orange', alpha=0.2)
             ax.scatter(pf_hist[:, 0], pf_hist[:, 1],
                        s=6, alpha=0.2, color='gray')
         except Exception as e:

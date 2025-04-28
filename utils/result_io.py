@@ -144,8 +144,8 @@ def load_test_module_information_results(file_path):
                 env_populations[int(time_key)] = {
                     'population': population,
                     'settings': settings,  # 每个时间点都包含相同的settings
-                    'POS': np.array(POS),
-                    'POF': np.array(POF),
+                    'POS': POS,
+                    'POF': POF,
                     'bound': [np.array(b) for b in pop_data.get('bound', [[], []])],
                     't': t,
                     'evaluate_times': int(time_key)

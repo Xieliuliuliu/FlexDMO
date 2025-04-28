@@ -112,7 +112,7 @@ def detection(pop: Population, problem: Problem, number_detector):
         f, g = problem.evaluate(temp.X.reshape(1, -1), False)
         isChange = 0
         for j in range(problem.n_obj):
-            if not np.all(f == pop.individuals[detector[i]].F):
+            if not np.all(f[0] == pop.individuals[detector[i]].F):
                 isChange = 1
                 break
         if isChange == 1:
