@@ -141,6 +141,42 @@ def draw_IGD_curve(information, ax):
         ax.tick_params(axis='both', labelsize=8)
 
 
+def draw_PS(information, ax):
+    # 当前时间步 & 当前评估次数
+    t_now = information.get("t", '?')
+    evaluate_time = information["evaluate_times"]
+
+    # 当前种群与目标函数值
+    population = information["population"]
+    ps_matrix = population.get_decision_matrix()
+    true_PS = information.get("POS", None)
+
+    ax.clear()
+
+    # --- 当前 PS ---
+    # 获取决策变量的维度
+    num_decision = ps_matrix.shape[1]
+    decision = list(range(1, num_decision + 1))
+
+    # 绘制每个个体的决策变量
+    for individual in ps_matrix:
+        ax.plot(decision, individual, alpha=0.6, color='blue')
+
+    # --- 当前 POS（理论） ---
+    # 如果有理论 Pareto 集，绘制理论 Pareto 集
+    if true_PS is not None:
+        for individual in true_PS:
+            ax.plot(decision, individual, alpha=0.9, color='red')
+
+    # 图标题增加 evaluate_time
+    ax.set_title(f"Dynamic PS (t={t_now}, evaluations={evaluate_time})", fontsize=10)
+    ax.set_xlabel("Decision", fontsize=9)
+    ax.set_ylabel("Value", fontsize=9)
+    ax.legend(["Current PS", "True POS"], fontsize=8)
+    ax.grid(True)
+    plt.tight_layout()
+
+
 def draw_selected_chart(information, ax, chart_type='Population'):
     """根据选择的类型绘制相应的图表
     
@@ -153,5 +189,7 @@ def draw_selected_chart(information, ax, chart_type='Population'):
         draw_PF(information, ax)
     elif chart_type == 'IGD':
         draw_IGD_curve(information, ax)
+    elif chart_type == 'Pareto Set':
+        draw_PS(information, ax)
     else:
         raise ValueError(f"未知的图表类型: {chart_type}")

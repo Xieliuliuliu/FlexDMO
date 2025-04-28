@@ -3,7 +3,7 @@ import os
 import time
 
 
-from plots.test_module.draw_population import draw_IGD_curve, draw_PF
+from plots.test_module.draw_population import draw_IGD_curve, draw_PF, draw_PS
 from utils.information_parser import convert_config_to_numeric
 from utils.result_io import save_test_module_information_results
 from views.common.GlobalVar import global_vars
@@ -170,6 +170,8 @@ def listen_pipe(parent_conn, process):
                         draw_PF(information, ax)
                     elif result_to_show == 'IGD':
                         draw_IGD_curve(information, ax)
+                    elif result_to_show == 'Pareto Set':
+                        draw_PS(information, ax)
                     
                     # 刷新 Canvas
                     canvas.draw()

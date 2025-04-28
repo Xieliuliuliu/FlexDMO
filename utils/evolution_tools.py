@@ -56,11 +56,16 @@ def crowd_selection(population, N):
                 now_rank_pop.sort(key=lambda individual: individual.F[i])
                 now_rank_pop[0].crowding_dist = np.inf
                 now_rank_pop[-1].crowding_dist = np.inf
-                for index in range(1, len(now_rank_pop) - 1):
-                    now_rank_pop[index].crowding_dist = now_rank_pop[index].crowding_dist + \
-                                                        (now_rank_pop[index + 1].F[i] -
-                                                         now_rank_pop[index - 1].F[i]) \
-                                                        / (now_rank_pop[-1].F[i] - now_rank_pop[0].F[i])
+                range_diff = now_rank_pop[-1].F[i] - now_rank_pop[0].F[i]
+                if range_diff == 0:  # 如果分母为零
+                    for index in range(1, len(now_rank_pop) - 1):
+                        now_rank_pop[index].crowding_dist += 1  # 设置默认值
+                else:
+                    for index in range(1, len(now_rank_pop) - 1):
+                        now_rank_pop[index].crowding_dist = now_rank_pop[index].crowding_dist + \
+                                                            (now_rank_pop[index + 1].F[i] -
+                                                             now_rank_pop[index - 1].F[i]) \
+                                                            / (now_rank_pop[-1].F[i] - now_rank_pop[0].F[i])
             now_rank_pop.sort(key=lambda individual: individual.crowding_dist, reverse=True)
             now_index = 0
             while now < N:

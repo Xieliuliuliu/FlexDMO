@@ -236,7 +236,7 @@ def create_result_display(frame):
     result_to_show = tk.StringVar()
     # 创建 Combobox
     result_choose = ttk.Combobox(top_frame, 
-                                values=['Population', 'IGD'], 
+                                values=['Population', 'Pareto Set', 'IGD'],
                                 width=25, 
                                 textvariable=result_to_show,
                                 state="readonly")
@@ -401,10 +401,8 @@ def create_result_selection(frame):
     row1.pack(fill='x', pady=(0, 5), expand=True)
 
     # 算法选择下拉框
-    algo_var = tk.StringVar()
     algo_combobox = ttk.Combobox(
         row1,
-        textvariable=algo_var,
         width=30,
         state='readonly'
     )
@@ -448,7 +446,7 @@ def create_result_selection(frame):
         handler_on_metric_change(event, algo_combobox, metric_var, metric_value)
     
     metric_combobox.bind('<<ComboboxSelected>>', on_metric_change)
-    
+
     # 在加载结果时也更新指标显示
     def on_load_button_click():
         from views.test_module.test_module_handler import on_load_button_click as handler_on_load_button_click

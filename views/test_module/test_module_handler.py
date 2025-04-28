@@ -410,6 +410,9 @@ def on_scale_change(val, current_label, total_label):
                     # 绘制 IGD 曲线
                     if populations:
                         draw_selected_chart(populations[-1], ax, 'IGD')
+                elif result_to_show == 'Pareto Set':
+                    if populations:
+                        draw_selected_chart(populations[-1], ax, 'Pareto Set')
                 
                 # 更新图表
                 canvas.draw()
