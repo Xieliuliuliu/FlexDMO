@@ -48,7 +48,7 @@ class Population:
             ind.X = np.array(X[i])
 
     def copy(self):
-        return Population(individuals=[copy.deepcopy(ind) for ind in self.individuals])
+        return copy.deepcopy(self)
 
     def update_objective_constrain(self,problem:problems.Problem):
         F, G = problem.evaluate(self.get_decision_matrix())

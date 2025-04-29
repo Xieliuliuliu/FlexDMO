@@ -11,12 +11,3 @@ class Individual:
 
     def __repr__(self):
         return f"Individual(X={self.X}, F={self.F}, feasible={self.feasible})"
-
-    def copy(self):
-        new_ind = Individual(self.X.copy())  # 决策变量复制
-        new_ind.F = None if self.F is None else self.F.copy()
-        new_ind.G = None if self.G is None else self.G.copy()
-        new_ind.feasible = self.feasible
-        new_ind.rank = self.rank
-        new_ind.crowding_distance = self.crowding_distance
-        return new_ind
