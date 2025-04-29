@@ -34,46 +34,84 @@ def quick_non_dominate_sort(population):
 
 
 def crowd_selection(population, N):
+    """拥挤度选择
+    
+    Args:
+        population: 待选择的种群
+        N: 需要选择的个体数量
+        
+    Returns:
+        选择后的新种群
+    """
     target_pop = []
     obj_DIM = population.get_objective_matrix().shape[1]
     now, now_rank = 0, 1
+    
     while now < N:
+        # 获取当前秩的所有个体
         now_rank_pop = []
         for individual in population.individuals:
             if individual.rank == now_rank:
                 now_rank_pop.append(individual)
+        
         need = N - now
         if len(now_rank_pop) <= need:
+            # 如果当前秩的个体数量小于等于需要的数量，全部选择
             for individual in now_rank_pop:
+                # 清除 dominate 和 bedominated 属性
+                if hasattr(individual, 'dominate'):
+                    delattr(individual, 'dominate')
+                if hasattr(individual, 'bedominated'):
+                    delattr(individual, 'bedominated')
                 copy_individual = individual.copy()
                 target_pop.append(copy_individual)
                 now += 1
             now_rank += 1
         else:
+            # 如果当前秩的个体数量大于需要的数量，使用拥挤度选择
             for individual in now_rank_pop:
                 individual.crowding_dist = 0
+            
+            # 对每个目标维度计算拥挤度
             for i in range(obj_DIM):
+                # 按当前目标值排序
                 now_rank_pop.sort(key=lambda individual: individual.F[i])
+                
+                # 设置边界点的拥挤度为无穷大
                 now_rank_pop[0].crowding_dist = np.inf
                 now_rank_pop[-1].crowding_dist = np.inf
+                
+                # 计算中间点的拥挤度
                 range_diff = now_rank_pop[-1].F[i] - now_rank_pop[0].F[i]
                 if range_diff == 0:  # 如果分母为零
+                    # 给中间点一个默认值，使用该维度在种群中的标准差
+                    std = np.std([ind.F[i] for ind in population.individuals])
                     for index in range(1, len(now_rank_pop) - 1):
-                        now_rank_pop[index].crowding_dist += 1  # 设置默认值
+                        now_rank_pop[index].crowding_dist += std if std > 0 else 1
                 else:
+                    # 计算中间点的拥挤度
                     for index in range(1, len(now_rank_pop) - 1):
-                        now_rank_pop[index].crowding_dist = now_rank_pop[index].crowding_dist + \
-                                                            (now_rank_pop[index + 1].F[i] -
-                                                             now_rank_pop[index - 1].F[i]) \
-                                                            / (now_rank_pop[-1].F[i] - now_rank_pop[0].F[i])
+                        now_rank_pop[index].crowding_dist += \
+                            (now_rank_pop[index + 1].F[i] - now_rank_pop[index - 1].F[i]) / range_diff
+            
+            # 按拥挤度降序排序
             now_rank_pop.sort(key=lambda individual: individual.crowding_dist, reverse=True)
+            
+            # 选择需要的个体
             now_index = 0
             while now < N:
+                # 清除 dominate 和 bedominated 属性
+                if hasattr(now_rank_pop[now_index], 'dominate'):
+                    delattr(now_rank_pop[now_index], 'dominate')
+                if hasattr(now_rank_pop[now_index], 'bedominated'):
+                    delattr(now_rank_pop[now_index], 'bedominated')
                 copy_individual = now_rank_pop[now_index].copy()
                 target_pop.append(copy_individual)
                 now_index += 1
                 now += 1
+            
             return Population(target_pop, population.xl, population.xu)
+    
     return Population(target_pop, population.xl, population.xu)
 
 
