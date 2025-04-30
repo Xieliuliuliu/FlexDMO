@@ -2,6 +2,7 @@ import importlib
 import os
 import time
 
+from matplotlib.gridspec import GridSpec
 
 from plots.test_module.draw_population import draw_IGD_curve, draw_PF, draw_PS
 from utils.information_parser import convert_config_to_numeric
@@ -162,19 +163,25 @@ def listen_pipe(parent_conn, process):
                     # print(f"[主进程] 收到子进程信息")
                     save_runtime_population_information(information)
                     canvas = global_vars['test_module'].get('canvas')
-                    ax = global_vars['test_module'].get('ax')
-                    
-                    # 根据选择框的值决定绘制内容
-                    result_to_show = global_vars['test_module'].get('result_to_show', 'Population').get()
-                    if result_to_show == 'Population':
-                        draw_PF(information, ax)
-                    elif result_to_show == 'IGD':
-                        draw_IGD_curve(information, ax)
-                    elif result_to_show == 'Pareto Set':
-                        draw_PS(information, ax)
-                    
-                    # 刷新 Canvas
-                    canvas.draw()
+                    fig = canvas.figure
+                    result_to_show = global_vars['test_module'].get('result_to_show', ['Pareto Front'])
+                    lock = global_vars['test_module']['canvas_lock']
+                    canvas_version =  global_vars['test_module']['canvas_version']
+                    # 获取锁
+                    lock.acquire()
+
+                    # 遍历 fig.axes 和 result_to_show，一一进行绘图
+                    for ax, result_type in zip(fig.axes, result_to_show):
+                        # 根据选择绘制相应的图表
+                        if result_type == 'Pareto Front':
+                            draw_PF(information, ax)
+                        elif result_type == 'IGD':
+                            draw_IGD_curve(information, ax)
+                        elif result_type == 'Pareto Set':
+                            draw_PS(information, ax)
+                    lock.release()
+                    # 如果不是主线程，使用 after 方法在主线程中调用 canvas.draw()
+                    canvas.get_tk_widget().after(0, lambda: canvas_draw(canvas,canvas_version))
                     # 如果执行完毕则对结果进行文件保存
                     if is_runtime_over(information):
                         save_test_module_information_results()
@@ -190,6 +197,14 @@ def listen_pipe(parent_conn, process):
         if scale:
             scale.configure(state='normal')
         parent_conn.close()
+
+def canvas_draw(canvas,canvas_version):
+    lock = global_vars['test_module']['canvas_lock']
+    lock.acquire()
+    canvas_version_after = global_vars['test_module']['canvas_version']
+    if canvas_version == canvas_version_after:
+        canvas.draw()
+    lock.release()
 
 def is_runtime_over(information):
     change_each_evaluations = information["settings"]["problem_params"]["change_each_evaluations"]

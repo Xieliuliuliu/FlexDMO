@@ -6,11 +6,13 @@ import tkinter as tk
 import numpy as np
 
 from matplotlib import pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.gridspec import GridSpec
 
 from utils.information_parser import get_dynamic_response_config, get_search_algorithm_config, get_problem_config, \
     get_all_dynamic_strategy, get_all_search_algorithm, get_all_problem, find_match_response_strategy, \
     find_match_problem, find_match_search_algorithm
-from utils.run_executor import run_in_test_mode, delete_state_in_test_mode, listen_pipe
+from utils.run_executor import run_in_test_mode, delete_state_in_test_mode, listen_pipe, canvas_draw
 from views.common.GlobalVar import global_vars
 from utils.result_io import load_test_module_information_results
 from plots.test_module.draw_population import draw_IGD_curve, draw_PF, draw_selected_chart
@@ -118,7 +120,7 @@ def on_continue_button_click():
     # print(f"Selected Search: {find_match_search_algorithm(search_algorithm)}")
 
     # 获取并打印 result_to_show 相关信息
-    result_to_show = global_vars['test_module']['result_to_show'].get()  # 获取 result_to_show 的当前值
+    result_to_show = global_vars['test_module']['result_to_show']  # 获取 result_to_show 的当前值
     # print(f"Result to Show: {result_to_show}")
 
     # 获取并打印 problem 相关信息
@@ -389,34 +391,39 @@ def on_scale_change(val, current_label, total_label):
             for env_data in runtime_populations.values():
                 if closest_time in env_data:
                     populations.append(env_data[closest_time])
-            
+
             # 更新图表
             canvas = global_vars['test_module'].get('canvas')
-            ax = global_vars['test_module'].get('ax')
-            
-            if canvas and ax:
-                # 清空当前图表
-                ax.clear()
-                
-                # 获取要显示的图表类型
-                result_to_show = global_vars['test_module'].get('result_to_show', 'Population').get()
-                
+            fig = canvas.figure
+
+            # 获取要显示的图表类型
+            result_to_show = global_vars['test_module'].get('result_to_show', ['Pareto Front'])
+
+            lock = global_vars['test_module']['canvas_lock']
+            canvas_version = global_vars['test_module']['canvas_version']
+            lock.acquire()
+
+            # 遍历 fig.axes 和 result_to_show，一一进行绘图
+            for ax, result_type in zip(fig.axes, result_to_show):
                 # 根据选择绘制相应的图表
-                if result_to_show == 'Population':
+                if result_type == 'Pareto Front':
                     # 绘制所有环境的种群
                     for population in populations:
-                        draw_selected_chart(population, ax, 'Population')
-                elif result_to_show == 'IGD':
+                        draw_selected_chart(population, ax, 'Pareto Front')
+                elif result_type == 'IGD':
                     # 绘制 IGD 曲线
                     if populations:
                         draw_selected_chart(populations[-1], ax, 'IGD')
-                elif result_to_show == 'Pareto Set':
+                elif result_type == 'Pareto Set':
                     if populations:
                         draw_selected_chart(populations[-1], ax, 'Pareto Set')
-                
-                # 更新图表
-                canvas.draw()
-            
+
+            # 更新图表
+            lock.release()
+            # 如果不是主线程，使用 after 方法在主线程中调用 canvas.draw()
+            canvas.get_tk_widget().after(0, lambda: canvas_draw(canvas, canvas_version))
+
+
     except Exception as e:
         print(f"[错误] 更新进度条时出错: {str(e)}")
 

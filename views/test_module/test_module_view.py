@@ -1,9 +1,11 @@
+import threading
 import tkinter as tk
 from tkinter import ttk
 from functools import partial
 
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, gridspec
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.gridspec import GridSpec
 
 from views.common.GlobalVar import global_vars
 from views.common.common_components import create_column, create_separator
@@ -14,7 +16,8 @@ from views.test_module.test_module_handler import (
     on_stop_button_click, load_selected_result, update_progress_control, update_result_display,
     on_scale_change
 )
-from plots.test_module.draw_population import draw_IGD_curve, draw_PF
+from plots.test_module.draw_population import draw_IGD_curve, draw_PF, draw_PS
+
 
 def create_dynamic_strategy_section(frame):
     """创建动态策略部分"""
@@ -232,43 +235,52 @@ def create_result_display(frame):
                            text="Result Indicator:",
                            font=("Arial", 11))
     result_label.pack(side="left", padx=(0, 5))
-    # 创建 StringVar 并绑定到 result_choose
-    result_to_show = tk.StringVar()
-    # 创建 Combobox
-    result_choose = ttk.Combobox(top_frame, 
-                                values=['Population', 'Pareto Set', 'IGD'],
-                                width=25, 
-                                textvariable=result_to_show,
-                                state="readonly")
 
-    # 设置默认选项为 Population
-    result_to_show.set('Population')
-
-    global_vars['test_module']['result_to_show'] = result_to_show
-    result_choose.pack(side="left", fill='x', expand=True)
-
-    # 绑定选择变化事件
-    def on_result_change(event):
-        # 获取当前选择的值
-        selected_value = result_to_show.get()
-        
-        # 获取进度条和标签
-        scale = global_vars['test_module'].get('scale')
-        current_label = global_vars['test_module'].get('current_label')
-        total_label = global_vars['test_module'].get('total_label')
-        
-        if scale and current_label and total_label:
-            # 调用 on_scale_change 更新图表
-            on_scale_change(scale.get(), current_label, total_label)
-    
-    result_choose.bind('<<ComboboxSelected>>', on_result_change)
+    # 创建 Listbox 用于多选
+    result_listbox = tk.Listbox(top_frame, selectmode=tk.MULTIPLE, height=3)
+    result_listbox.pack(side="left", fill='x', expand=True)
+    result_listbox.insert(tk.END, "Pareto Front")
+    result_listbox.insert(tk.END, "Pareto Set")
+    result_listbox.insert(tk.END, "IGD")
 
     # 2. 中间内容区域（仅图表）
     content_frame = ttk.Frame(result_frame)
     content_frame.pack(fill='both', expand=True)
 
+
+    selected_results = []
+    global_vars['test_module']['result_to_show'] = selected_results
+    # 绑定 Listbox 的选择变化事件
+    def on_result_select(event):
+        # 获取选中的选项
+        selected_indices = result_listbox.curselection()
+        # 更新全局变量中的 selected_results
+        global_vars['test_module']['result_to_show'] = [result_listbox.get(i) for i in selected_indices]
+
+        # 获取当前 fig 中的 ax 数目
+        result_to_show = global_vars['test_module']['result_to_show']
+        current_ax_count = len(fig.axes)
+        # 获取需要显示的图表数目
+        required_ax_count = len(result_to_show)
+        # 如果需要的 ax 数目与当前的 ax 数目不一致，重新创建所有 ax
+        if required_ax_count != current_ax_count:
+            lock = global_vars['test_module']['canvas_lock']
+            # 获取锁
+            lock.acquire()
+            # 清空当前 fig 中的所有 ax
+            fig.clf()
+            # 重新创建所需数量的 ax
+            for i in range(required_ax_count):
+                fig.add_subplot(required_ax_count, 1, i + 1)
+            global_vars['test_module']['canvas_version']+=1
+            lock.release()
+    result_listbox.bind('<<ListboxSelect>>', on_result_select)
     # 图表区域（自适应）
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig= plt.figure(figsize=(6, 3))
+    fig.add_subplot(1,1,1)
+
+    # 调整布局
+    fig.tight_layout()
 
     # 如果已有画布，先销毁旧画布
     if global_vars['test_module'].get('canvas') is not None:
@@ -285,8 +297,8 @@ def create_result_display(frame):
 
     # 保存画布引用
     global_vars['test_module']['canvas'] = canvas
-    global_vars['test_module']['ax'] = ax
-
+    global_vars['test_module']['canvas_version'] = 0
+    global_vars['test_module']['canvas_lock'] = threading.RLock()
     # 3. 底部控制面板（一行两列布局）
     bottom_frame = ttk.Frame(result_frame)
     bottom_frame.pack(side="bottom", fill='x', pady=10)
