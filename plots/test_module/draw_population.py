@@ -22,12 +22,13 @@ def draw_PF(information, ax):
 
     # --- 获取历史信息 ---
     history = global_vars['test_module'].get("runtime_populations", {})
-
+    
+    # 只取当前时间步之前的4个时间步
+    recent_times = [t for t in history if t < t_now][-4:] if len(history) > 4 else [t for t in history if t < t_now]
     # --- 绘制历史 PF（灰色，变淡） ---
-    for t_hist, info_hist in history.items():
-        if t_hist >= t_now:
-            continue
+    for t_hist in recent_times:
         try:
+            info_hist = history[t_hist]
             last_key, last_value = list(info_hist.items())[-1]
             pf_hist = last_value["population"].get_objective_matrix()
             pof_hist = last_value["POF"]
@@ -162,13 +163,15 @@ def draw_PS(information, ax):
     ax.clear()
 
     # --- 获取历史信息 ---
-    history = global_vars['test_module'].get("runtime_populations", {})
+    history_times = global_vars['test_module'].get("runtime_populations", {})
+    
+    # 只取当前时间步之前的4个时间步
+    recent_times = [t for t in history_times if t < t_now][-4:] if len(history_times) > 4 else [t for t in history_times if t < t_now]
 
     # --- 绘制历史 PS（变淡） ---
-    for t_hist, info_hist in history.items():
-        if t_now > t_hist+4:
-            continue
+    for t_hist in recent_times:
         try:
+            info_hist = history_times[t_hist]
             last_key, last_value = list(info_hist.items())[-1]
             ps_hist = last_value["population"].get_decision_matrix()
             pos_hist = last_value["POS"]
