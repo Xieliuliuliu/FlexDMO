@@ -1,6 +1,7 @@
 import importlib
 import os
 import time
+import traceback
 
 from matplotlib.gridspec import GridSpec
 
@@ -86,7 +87,7 @@ def run_in_test_mode_process(response_strategy, search_algorithm, problem_name, 
 
         search_instance.optimize(problem_instance, response_instance)
     except Exception as e:
-        print(f"[Error in subprocess]: {e}")
+        print(f"[Error in subprocess]: {traceback.print_exc()}")
 
 
 def save_state_in_test_mode(state, p, parent_conn,child_conn):

@@ -89,8 +89,9 @@ class NSGA2(Algorithm):
         quick_non_dominate_sort(population)
         return crowd_selection(population, problem.solution_num)
 
-
+# from problems.benchmark.DP1.main import DP1
+# from algorithms.response_strategy.NoResponse.main import NoResponse
 # nsga = NSGA2()
 # response = NoResponse()
-# df1 = DF1(10, 10, 20, 100, 30)
+# df1 = DP1(10, 10, 20, 100, 30)
 # nsga.optimize(df1, response)
