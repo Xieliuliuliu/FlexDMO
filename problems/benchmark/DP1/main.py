@@ -4,9 +4,10 @@ from problems.Problem import Problem
 
 class DP1(Problem):
     def __init__(self, decision_num, n, tau, solution_num, total_evaluate_time):
-        super().__init__(decision_num, 2, 0, n, tau, solution_num, total_evaluate_time, 'Dynamic')
-        self.xl = np.zeros(decision_num)
-        self.xu = np.ones(decision_num)
+        super().__init__(decision_num, 2, 0, n, tau, solution_num, total_evaluate_time, 'DP1')
+        # 第一个变量在[0,1]，其他变量在[-1,1]
+        self.xl = np.array([0.0] + [-1.0] * (decision_num - 1))
+        self.xu = np.array([1.0] + [1.0] * (decision_num - 1))
 
     def _evaluate_objectives(self, X, t=None):
         # 计算时间变量 t'

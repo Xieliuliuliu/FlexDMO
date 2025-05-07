@@ -183,9 +183,6 @@ def listen_pipe(parent_conn, process):
                     lock.release()
                     # 如果不是主线程，使用 after 方法在主线程中调用 canvas.draw()
                     canvas.get_tk_widget().after(0, lambda: canvas_draw(canvas,canvas_version))
-                    # 如果执行完毕则对结果进行文件保存
-                    if is_runtime_over(information):
-                        save_test_module_information_results()
                 except EOFError:
                     print("[主进程] Pipe连接已关闭（EOF）")
                     break
@@ -195,6 +192,8 @@ def listen_pipe(parent_conn, process):
         print("[主进程] close parent")
         # 在结束时启用进度条
         scale = global_vars['test_module'].get('scale')
+        print("正在保存运行数据")
+        save_test_module_information_results()
         if scale:
             scale.configure(state='normal')
         parent_conn.close()
@@ -207,11 +206,6 @@ def canvas_draw(canvas,canvas_version):
         canvas.draw()
     lock.release()
 
-def is_runtime_over(information):
-    change_each_evaluations = information["settings"]["problem_params"]["change_each_evaluations"]
-    total_change_time = information["settings"]["problem_params"]["total_change_time"]
-    max_evaluations = change_each_evaluations * total_change_time
-    return information["evaluate_times"] >= max_evaluations
 
 def save_runtime_population_information(information):
     t = information["t"]

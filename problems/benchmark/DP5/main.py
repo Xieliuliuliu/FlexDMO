@@ -5,8 +5,9 @@ from problems.Problem import Problem
 class DP5(Problem):
     def __init__(self, decision_num, n, tau, solution_num, total_evaluate_time):
         super().__init__(decision_num, 2, 0, n, tau, solution_num, total_evaluate_time, 'DP5')
-        self.xl = np.zeros(decision_num)
-        self.xu = np.ones(decision_num)
+        # 设置决策变量范围：第一个变量在[0,1]，其他在[-1,1]
+        self.xl = np.array([0.0] + [-1.0] * (decision_num - 1))
+        self.xu = np.array([1.0] + [1.0] * (decision_num - 1))
 
     def _evaluate_objectives(self, X, t=None):
         if t is None:
@@ -41,18 +42,13 @@ class DP5(Problem):
         G = np.sin(0.5 * np.pi * times)
         a = 0.2 + 2.8 * np.abs(G)
 
-        # 构造最优解集
-        x0_values = np.linspace(0, 1, 1001)
-        X = np.zeros((1001, self.decision_num))
-        X[:, 0] = x0_values
-        X[:, 1:] = G
+        # 构造决策变量
+        x = np.linspace(0, 1, 1500)
+        g = 0  # 在帕累托前沿上 g = 0
 
-        # 计算目标值（此时g=0）
-        base_f1 = x0_values + 0.1 * np.sin(3 * np.pi * x0_values)
-        base_f2 = 1 - x0_values + 0.1 * np.sin(3 * np.pi * x0_values)
-
-        f1 = base_f1 ** a
-        f2 = base_f2 ** a
+        # 计算目标值
+        f1 = (1 + g) * (x + 0.1 * np.sin(3 * np.pi * x)) ** a
+        f2 = (1 + g) * (1 - x + 0.1 * np.sin(3 * np.pi * x)) ** a
 
         return np.column_stack([f1, f2])
 

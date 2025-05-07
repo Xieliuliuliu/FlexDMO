@@ -6,8 +6,8 @@ from problems.Problem import Problem
 class DP9(Problem):
     def __init__(self, decision_num, n, tau, solution_num, total_evaluate_time):
         super().__init__(decision_num, 2, 0, n, tau, solution_num, total_evaluate_time, 'DP9')
-        self.xl = np.zeros(decision_num)
-        self.xu = np.ones(decision_num)
+        self.xl = np.array([0.0] + [-1.0] * (decision_num - 1))
+        self.xu = np.array([1.0] + [1.0] * (decision_num - 1))
 
     def _evaluate_objectives(self, X, t=None):
         if t is None: t = self.t
@@ -33,7 +33,7 @@ class DP9(Problem):
         G = np.sin(0.5 * np.pi * t / self.n)
         W = 10 ** (1 + np.abs(G))
         sin_term = 0.05 * np.sin(W * np.pi * x)
-        return np.column_stack([x + sin_term, 1 - x + sin_term])
+        return self.get_nondominate([x + sin_term, 1 - x + sin_term])
 
     def get_pareto_set(self, t=None):
         if t is None: t = self.t

@@ -11,52 +11,53 @@ class DP3(Problem):
     def _evaluate_objectives(self, X, t=None):
         if t is None:
             t = self.t
-        # 时间标准化处理
+
+        # 动态参数计算
         times = t / self.n
-        # 动态参数
-        k = 10.0 * np.cos(2.5 * np.pi * times)
+        k = 10 * np.cos(2.5 * np.pi * times)
         a = 0.5 * np.abs(np.sin(np.pi * times))
 
+        # g 函数
+        y = X[:, 1:] - 0.5
+        g = np.sum((y ** 2) * (1 + np.abs(np.cos(8 * np.pi * X[:, 1:]))), axis=1)
+
         x0 = X[:, 0]
-        other_vars = X[:, 1:]
+        f1 = (1 + g) * np.cos(0.5 * np.pi * x0)
 
-        # 输入验证（可选）
-        assert np.all(X >= 0) and np.all(X <= 1), f"决策变量越界: {X}"
+        # f2 分段计算
+        f2 = np.zeros_like(f1)
+        mask = x0 <= a
+        f2[mask] = (1 + g[mask]) * np.abs(k * np.cos(0.5 * np.pi * x0[mask]) - np.cos(0.5 * np.pi * a) + np.sin(0.5 * np.pi * a))
+        f2[~mask] = (1 + g[~mask]) * np.sin(0.5 * np.pi * x0[~mask])
 
-        # 正确的 g 计算（作用在 x[1:] 上）
-        g = np.sum((other_vars - 0.5) ** 2 * (1.0 + np.abs(np.cos(8.0 * np.pi * other_vars))), axis=1)
-
-        # f1 = (1 + g) * cos(0.5 * pi * x0)
-        f1 = (1.0 + g) * np.cos(0.5 * np.pi * x0)
-
-        # f2 条件分支处理（注意：k * (cos(x0) - cos(a))）
-        term1 = np.abs(k * (np.cos(0.5 * np.pi * x0) - np.cos(0.5 * np.pi * a))) + np.sin(0.5 * np.pi * a)
-        term2 = np.sin(0.5 * np.pi * x0)
-        f2 = (1.0 + g) * np.where(x0 <= a, term1, term2)  # 注意用 <=
-
-        return np.column_stack((f1, f2))
+        return np.column_stack([f1, f2])
 
     def get_pareto_front(self, t=None):
         if t is None:
             t = self.t
-        # 时间标准化处理
+
         times = t / self.n
-        k = 10.0 * np.cos(2.5 * np.pi *times)
+        k = 10 * np.cos(2.5 * np.pi * times)
         a = 0.5 * np.abs(np.sin(np.pi * times))
+        g = 0  # PF 时 g=0
 
-        x0 = np.linspace(0.0, 1.0, 1500)
-        f1 = np.cos(0.5 * np.pi * x0)
+        x = np.linspace(0, 1, 1500)
+        f1 = (1 + g) * np.cos(0.5 * np.pi * x)
 
-        # 分段定义 f2，根据 x <= a（注意这里用 <=）
-        term1 = np.abs(k * np.cos(0.5 * np.pi * x0) - np.cos(0.5 * np.pi * a)) + np.sin(0.5 * np.pi * a)
-        term2 = np.sin(0.5 * np.pi * x0)
-        f2 =  np.where(x0 <= a, term1, term2)  # 注意 <=
+        f2 = np.zeros_like(f1)
+        mask = x <= a
+        f2[mask] = (1 + g) * np.abs(k * np.cos(0.5 * np.pi * x[mask]) - np.cos(0.5 * np.pi * a) + np.sin(0.5 * np.pi * a))
+        f2[~mask] = (1 + g) * np.sin(0.5 * np.pi * x[~mask])
 
-        return np.column_stack((f1, f2))
+        return self.get_nondominate([f1, f2])
 
     def get_pareto_set(self, t=None):
-        PS = np.empty((100, self.decision_num))
-        PS[:, 0] = np.linspace(0.0, 1.0, 100)
-        if self.decision_num > 1:
-            PS[:, 1:] = 0.5
+        if t is None:
+            t = self.t
+        times = t / self.n
+
+        size = 100
+        PS = np.ones((size, self.decision_num)) * 0.5  # 其他变量保持在0.5
+        PS[:, 0] = np.linspace(0, 1, size)
+
         return PS

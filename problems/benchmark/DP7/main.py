@@ -5,8 +5,9 @@ from problems.Problem import Problem
 class DP7(Problem):
     def __init__(self, decision_num, n, tau, solution_num, total_evaluate_time):
         super().__init__(decision_num, 2, 0, n, tau, solution_num, total_evaluate_time, 'DP7')
-        self.xl = np.zeros(decision_num)
-        self.xu = np.ones(decision_num)
+        # 设置决策变量范围：第一个变量在[0,1]，其他在[-1,1]
+        self.xl = np.array([0.0] + [-1.0] * (decision_num - 1))
+        self.xu = np.array([1.0] + [1.0] * (decision_num - 1))
 
     def _evaluate_objectives(self, X, t=None):
         if t is None:
@@ -28,11 +29,8 @@ class DP7(Problem):
         g = 1 + np.sum((other_vars - tmp[:, np.newaxis]) ** 2, axis=1)  # 维度对齐
 
         # ===== 目标函数计算 =====
-        base_f1 = x0 + 0.1 * np.sin(3 * np.pi * x0)
-        base_f2 = 1 - x0 + 0.1 * np.sin(3 * np.pi * x0)
-
-        f1 = g * base_f1
-        f2 = g * (base_f2 ** a)  # 动态指数项
+        f1 = g * (x0 + 0.1 * np.sin(3 * np.pi * x0))
+        f2 = g * ((1 - x0 + 0.1 * np.sin(3 * np.pi * x0)) ** a)  # 修正：整个表达式都加上指数
 
         return np.column_stack([f1, f2])
 
@@ -46,14 +44,12 @@ class DP7(Problem):
         a = 2.25 + 2 * np.cos(2 * np.pi * times)
 
         # ===== 生成理想前沿 =====
-        x0 = np.linspace(0, 1, 1500)  # 高密度采样
-        base_f1 = x0 + 0.1 * np.sin(3 * np.pi * x0)
-        base_f2 = 1 - x0 + 0.1 * np.sin(3 * np.pi * x0)
+        x = np.linspace(0, 1, 1500)  # 高密度采样
+        g = 1  # 在帕累托前沿上，其他变量都等于tmp，所以g=1
+        f1 = g * (x + 0.1 * np.sin(3 * np.pi * x))
+        f2 = g * ((1 - x + 0.1 * np.sin(3 * np.pi * x)) ** a)
 
-        return np.column_stack([
-            base_f1,  # f1 = x + 0.1*sin(3πx)
-            base_f2 ** a  # f2 = (1-x + 0.1*sin(3πx))^a
-        ])
+        return np.column_stack([f1, f2])
 
     def get_pareto_set(self, t=None):
         if t is None:

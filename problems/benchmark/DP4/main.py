@@ -7,6 +7,8 @@ class DP4(Problem):
         super().__init__(decision_num, 2, 0, n, tau, solution_num, total_evaluate_time, 'DP4')
         self.xl = np.zeros(decision_num)
         self.xu = np.ones(decision_num)
+        self.xl[1:] = -1  # 第一个变量范围是[0,1]，其他变量范围是[-1,1]
+        self.xu[1:] = 1
 
     def _evaluate_objectives(self, X, t=None):
         if t is None:
@@ -30,10 +32,10 @@ class DP4(Problem):
         if t is None:
             t = self.t
         times = t / self.n
-        G = np.sin(0.5 * np.pi * times)
-        x0 = np.linspace(0, 1, 1001)
-        f1 = x0 + 0.1 * np.sin(3 * np.pi * x0)
-        f2 = 1 - x0 + 0.1 * np.sin(3 * np.pi * x0)
+        x = np.linspace(0, 1, 1500)
+        g = 0  # PF 时 g=0
+        f1 = (1 + g) * (x + 0.1 * np.sin(3 * np.pi * x))
+        f2 = (1 + g) * (1 - x + 0.1 * np.sin(3 * np.pi * x))
         return np.column_stack([f1, f2])
 
     def get_pareto_set(self, t=None):

@@ -326,7 +326,7 @@ def update_progress_control(scale, current_label, total_label):
     try:
         # 获取总变化次数
         problem_params = runtime_config.get('problem_params', {})
-        total_changes = int(problem_params.get('change_each_evaluations', 0)) *  int(problem_params.get('total_change_time', 0))
+        total_changes = int(problem_params.get('change_each_evaluations', 0) * int(problem_params.get('total_change_time', 0))) + int(problem_params.get('initial_convergence', 0))
         
         # 获取当前变化次数
         current_change = 0

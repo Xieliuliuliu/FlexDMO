@@ -33,8 +33,8 @@ def draw_PF(information, ax):
             pf_hist = last_value["population"].get_objective_matrix()
             pof_hist = last_value["POF"]
             if pof_hist[:, 0] is not None:
-                ax.plot(pof_hist[:, 0], pof_hist[:, 1],
-                        linestyle='--', linewidth=1, color='orange', alpha=0.2)
+                ax.scatter(pof_hist[:, 0], pof_hist[:, 1],
+                        s=10, color='gray', alpha=0.2, marker='.')
             ax.scatter(pf_hist[:, 0], pf_hist[:, 1],
                        s=6, alpha=0.2, color='gray')
         except Exception as e:
@@ -47,8 +47,8 @@ def draw_PF(information, ax):
 
     # --- 当前 POF（理论） ---
     if true_PF is not None:
-        ax.plot(true_PF[:, 0], true_PF[:, 1],
-                linestyle='--', label="Current True POF", linewidth=1, color='orange', alpha=0.9)
+        ax.scatter(true_PF[:, 0], true_PF[:, 1],
+                s=10, label="Current True POF", color='orange', alpha=0.9, marker='.')
 
     # 图标题增加 evaluate_time
     ax.set_title(f"Dynamic PF (t={t_now}, evaluations={evaluate_time})", fontsize=10)
@@ -163,35 +163,30 @@ def draw_PS(information, ax):
     ax.clear()
 
     # --- 获取历史信息 ---
-    history_times = global_vars['test_module'].get("runtime_populations", {})
+    history = global_vars['test_module'].get("runtime_populations", {})
     
     # 只取当前时间步之前的4个时间步
-    recent_times = [t for t in history_times if t < t_now][-4:] if len(history_times) > 4 else [t for t in history_times if t < t_now]
+    recent_times = [t for t in history if t < t_now][-4:] if len(history) > 4 else [t for t in history if t < t_now]
 
     # --- 绘制历史 PS（变淡） ---
     for t_hist in recent_times:
         try:
-            info_hist = history_times[t_hist]
+            info_hist = history[t_hist]
             last_key, last_value = list(info_hist.items())[-1]
-            ps_hist = last_value["population"].get_decision_matrix()
+            # 先画POS
             pos_hist = last_value["POS"]
             if pos_hist[:, 0] is not None:
                 lines = [list(zip(decision, individual)) for individual in pos_hist]
                 lc = LineCollection(lines, colors='orange', alpha=0.1)
                 ax.add_collection(lc)
+            # 再画求解的PS
+            ps_hist = last_value["population"].get_decision_matrix()
             lines = [list(zip(decision, individual)) for individual in ps_hist]
             lc = LineCollection(lines, colors='gray', alpha=0.1)
             ax.add_collection(lc)
         except Exception as e:
             print(f"[绘制错误] t={t_hist}, error={e}")
             continue
-
-    # --- 当前 PS ---
-    # 使用 LineCollection 绘制每个个体的决策变量
-    lines = [list(zip(decision, individual)) for individual in ps_matrix]
-    lc = LineCollection(lines, colors='blue', alpha=1)
-    ax.add_collection(lc)
-    ax.plot([], [], alpha=0.6, color='blue', label="Current PS")  # 添加图例
 
     # --- 当前 POS（理论） ---
     # 如果有理论 Pareto 集，绘制理论 Pareto 集
@@ -200,6 +195,13 @@ def draw_PS(information, ax):
         lc = LineCollection(lines, colors='red', alpha=1)
         ax.add_collection(lc)
         ax.plot([], [], alpha=0.9, color='red', label="True POS")  # 添加图例
+
+    # --- 当前 PS ---
+    # 使用 LineCollection 绘制每个个体的决策变量
+    lines = [list(zip(decision, individual)) for individual in ps_matrix]
+    lc = LineCollection(lines, colors='blue', alpha=1)
+    ax.add_collection(lc)
+    ax.plot([], [], alpha=0.6, color='blue', label="Current PS")  # 添加图例
 
     # 图标题增加 evaluate_time
     ax.set_title(f"Dynamic PS (t={t_now}, evaluations={evaluate_time})", fontsize=10)

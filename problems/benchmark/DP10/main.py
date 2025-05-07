@@ -50,12 +50,10 @@ class DP10(Problem):
         # ===== 生成理想前沿 =====
         x = np.linspace(0, 1, 1500)
         cos_px = np.cos(p * np.pi * x)
+        f1 = np.cos(0.5 * np.pi * x) ** 2 + G
 
-        return np.column_stack([
-            np.cos(0.5 * np.pi * x) ** 2 + G,  # f1公式
-            np.sin(0.5 * np.pi * x) ** 2 +
-            np.sin(0.5 * np.pi * x) * cos_px ** 2 + G  # f2公式
-        ])
+        f2 = np.sin(0.5 * np.pi * x) ** 2 + np.sin(0.5 * np.pi * x) * cos_px ** 2 + G
+        return self.get_nondominate([f1, f2])
 
     def get_pareto_set(self, t=None):
         if t is None:

@@ -5,8 +5,9 @@ from problems.Problem import Problem
 class DP6(Problem):
     def __init__(self, decision_num, n, tau, solution_num, total_evaluate_time):
         super().__init__(decision_num, 2, 0, n, tau, solution_num, total_evaluate_time, 'DP6')
-        self.xl = np.zeros(decision_num)
-        self.xu = np.ones(decision_num)
+        # 设置决策变量范围：第一个变量在[0,1]，其他在[-1,1]
+        self.xl = np.array([0.0] + [-1.0] * (decision_num - 1))
+        self.xu = np.array([1.0] + [1.0] * (decision_num - 1))
 
     def _evaluate_objectives(self, X, t=None):
         if t is None:
@@ -39,12 +40,12 @@ class DP6(Problem):
         G = np.sin(0.5 * np.pi * times)
         w = np.floor(10 * G)
 
-        x0 = np.linspace(0, 1, 1500)  # 高密度采样
-        sin_term = 0.02 * np.sin(w * np.pi * x0)
-        return np.column_stack([
-            x0 + sin_term,
-            1 - x0 + sin_term
-        ])
+        x = np.linspace(0, 1, 1500)  # 高密度采样
+        g = 1  # 在帕累托前沿上，其他变量都等于G，所以g=1
+        sin_term = 0.02 * np.sin(w * np.pi * x)
+        f1 = g * (x + sin_term)
+        f2 = g * (1 - x + sin_term)
+        return np.column_stack([f1, f2])
 
     def get_pareto_set(self, t=None):
         if t is None:
