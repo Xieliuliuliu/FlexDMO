@@ -1,36 +1,52 @@
 import random
-
 import numpy as np
-
 from components.Population import Population
 from problems.Problem import Problem
 
 
 def quick_non_dominate_sort(population):
-    # 进行非支配排序
-    Front = []
+    """快速非支配排序
+    
+    Args:
+        population: 待排序的种群
+    """
+    if not population.individuals:
+        return
+        
+    # 初始化支配关系
     for individual in population.individuals:
         individual.dominate = []
         individual.bedominated = 0
-        for compare_individual in population.individuals:
-            if isDominated(individual, compare_individual) == 1:
-                individual.dominate.append(compare_individual)
-            elif isDominated(compare_individual, individual) == 1:
-                individual.bedominated += 1
+        
+    # 计算支配关系
+    for i, ind1 in enumerate(population.individuals):
+        for j, ind2 in enumerate(population.individuals):
+            if i != j:
+                domination = isDominated(ind1, ind2)
+                if domination == 1:  # ind1支配ind2
+                    ind1.dominate.append(ind2)
+                elif domination == 0:  # ind1被ind2支配
+                    ind1.bedominated += 1
+                    
+    # 生成非支配层
+    front = []
+    for individual in population.individuals:
         if individual.bedominated == 0:
             individual.rank = 1
-            Front.append(individual)
-    i = 1
-    while len(Front) != 0:
-        Q = []
-        for non_dominate_individual in Front:
-            for be_dominate_individual in non_dominate_individual.dominate:
-                be_dominate_individual.bedominated -= 1
-                if be_dominate_individual.bedominated == 0:
-                    be_dominate_individual.rank = i + 1
-                    Q.append(be_dominate_individual)
-        i += 1
-        Front = Q
+            front.append(individual)
+            
+    # 迭代生成后续的非支配层
+    current_rank = 1
+    while front:
+        next_front = []
+        for non_dominated in front:
+            for dominated in non_dominated.dominate:
+                dominated.bedominated -= 1
+                if dominated.bedominated == 0:
+                    dominated.rank = current_rank + 1
+                    next_front.append(dominated)
+        current_rank += 1
+        front = next_front
 
 
 def crowd_selection(population, N):
@@ -43,117 +59,142 @@ def crowd_selection(population, N):
     Returns:
         选择后的新种群
     """
-    target_pop = []
-    obj_DIM = population.get_objective_matrix().shape[1]
-    now, now_rank = 0, 1
-    
-    while now < N:
-        # 获取当前秩的所有个体
-        now_rank_pop = []
-        for individual in population.individuals:
-            if individual.rank == now_rank:
-                now_rank_pop.append(individual)
+    if not population.individuals:
+        return Population(xl=population.xl, xu=population.xu)
         
-        need = N - now
-        if len(now_rank_pop) <= need:
+    target_pop = []
+    obj_dim = population.get_objective_matrix().shape[1]
+    current_count = 0
+    current_rank = 1
+    
+    while current_count < N:
+        # 获取当前秩的所有个体
+        current_rank_pop = [ind for ind in population.individuals if ind.rank == current_rank]
+        
+        if not current_rank_pop:
+            current_rank += 1
+            continue
+            
+        need = N - current_count
+        if len(current_rank_pop) <= need:
             # 如果当前秩的个体数量小于等于需要的数量，全部选择
-            for individual in now_rank_pop:
-                # 清除 dominate 和 bedominated 属性
-                if hasattr(individual, 'dominate'):
-                    delattr(individual, 'dominate')
-                if hasattr(individual, 'bedominated'):
-                    delattr(individual, 'bedominated')
-                copy_individual = individual.copy()
-                target_pop.append(copy_individual)
-                now += 1
-            now_rank += 1
+            for individual in current_rank_pop:
+                # 清除临时属性
+                for attr in ['dominate', 'bedominated']:
+                    if hasattr(individual, attr):
+                        delattr(individual, attr)
+                target_pop.append(individual.copy())
+                current_count += 1
+            current_rank += 1
         else:
             # 如果当前秩的个体数量大于需要的数量，使用拥挤度选择
-            for individual in now_rank_pop:
+            for individual in current_rank_pop:
                 individual.crowding_dist = 0
-            
+                
             # 对每个目标维度计算拥挤度
-            for i in range(obj_DIM):
+            for i in range(obj_dim):
                 # 按当前目标值排序
-                now_rank_pop.sort(key=lambda individual: individual.F[i])
+                current_rank_pop.sort(key=lambda ind: ind.F[i])
                 
                 # 设置边界点的拥挤度为无穷大
-                now_rank_pop[0].crowding_dist = np.inf
-                now_rank_pop[-1].crowding_dist = np.inf
+                current_rank_pop[0].crowding_dist = float('inf')
+                current_rank_pop[-1].crowding_dist = float('inf')
                 
                 # 计算中间点的拥挤度
-                range_diff = now_rank_pop[-1].F[i] - now_rank_pop[0].F[i]
-                if range_diff == 0:  # 如果分母为零
-                    # 给中间点一个默认值，使用该维度在种群中的标准差
-                    std = np.std([ind.F[i] for ind in population.individuals])
-                    for index in range(1, len(now_rank_pop) - 1):
-                        now_rank_pop[index].crowding_dist += std if std > 0 else 1
+                f_max = current_rank_pop[-1].F[i]
+                f_min = current_rank_pop[0].F[i]
+                range_diff = f_max - f_min
+                
+                if range_diff > 0:
+                    for j in range(1, len(current_rank_pop) - 1):
+                        current_rank_pop[j].crowding_dist += (
+                            current_rank_pop[j + 1].F[i] - 
+                            current_rank_pop[j - 1].F[i]
+                        ) / range_diff
                 else:
-                    # 计算中间点的拥挤度
-                    for index in range(1, len(now_rank_pop) - 1):
-                        now_rank_pop[index].crowding_dist += \
-                            (now_rank_pop[index + 1].F[i] - now_rank_pop[index - 1].F[i]) / range_diff
-            
+                    # 当目标值相同时，使用均匀分布
+                    for j in range(1, len(current_rank_pop) - 1):
+                        current_rank_pop[j].crowding_dist += 1.0
+                        
             # 按拥挤度降序排序
-            now_rank_pop.sort(key=lambda individual: individual.crowding_dist, reverse=True)
+            current_rank_pop.sort(key=lambda ind: ind.crowding_dist, reverse=True)
             
             # 选择需要的个体
-            now_index = 0
-            while now < N:
-                # 清除 dominate 和 bedominated 属性
-                if hasattr(now_rank_pop[now_index], 'dominate'):
-                    delattr(now_rank_pop[now_index], 'dominate')
-                if hasattr(now_rank_pop[now_index], 'bedominated'):
-                    delattr(now_rank_pop[now_index], 'bedominated')
-                copy_individual = now_rank_pop[now_index].copy()
-                target_pop.append(copy_individual)
-                now_index += 1
-                now += 1
+            for i in range(need):
+                individual = current_rank_pop[i]
+                # 清除临时属性
+                for attr in ['dominate', 'bedominated']:
+                    if hasattr(individual, attr):
+                        delattr(individual, attr)
+                target_pop.append(individual.copy())
+                current_count += 1
+                
+            return Population(individuals=target_pop, xl=population.xl, xu=population.xu)
             
-            return Population(target_pop, population.xl, population.xu)
-    
-    return Population(target_pop, population.xl, population.xu)
+    return Population(individuals=target_pop, xl=population.xl, xu=population.xu)
 
 
 def isDominated(A, B):
-    ODIM = A.F.shape[0]
-    larger = 0
-    smaller = 0
-    equal = 0
-    for i in range(ODIM):
-        if (A.F[i] < B.F[i]):
-            smaller = smaller + 1
-        elif (A.F[i] == B.F[i]):
-            equal = equal + 1
+    """判断支配关系
+    
+    Args:
+        A: 第一个个体
+        B: 第二个个体
+        
+    Returns:
+        1: A支配B
+        0: A被B支配
+        2: A和B互不支配
+    """
+    obj_dim = A.F.shape[0]
+    better_count = 0
+    worse_count = 0
+    equal_count = 0
+    
+    for i in range(obj_dim):
+        if A.F[i] < B.F[i]:
+            better_count += 1
+        elif A.F[i] == B.F[i]:
+            equal_count += 1
         else:
-            larger = larger + 1
-    if (smaller == ODIM):
-        return 1  # 1表示A支配B
-    if (smaller + equal == ODIM and smaller > 0):
-        return 1
-    if (larger == ODIM):
-        return 0  # 0表示A被B支配
-    if (larger + equal == ODIM and larger > 0):
-        return 0
-    if (smaller > 0 and larger > 0):
-        return 2  # 2表示A,B互不支配
-    if (equal == ODIM):
-        return 2
+            worse_count += 1
+            
+    if better_count == obj_dim:
+        return 1  # A支配B
+    if better_count + equal_count == obj_dim and better_count > 0:
+        return 1  # A支配B
+    if worse_count == obj_dim:
+        return 0  # A被B支配
+    if worse_count + equal_count == obj_dim and worse_count > 0:
+        return 0  # A被B支配
+    return 2  # A和B互不支配
 
 
 def detection(pop: Population, problem: Problem, number_detector):
+    """检测环境变化
+    
+    Args:
+        pop: 当前种群
+        problem: 问题实例
+        number_detector: 检测个体数量
+        
+    Returns:
+        1: 检测到环境变化
+        0: 未检测到环境变化
+    """
+    if not pop.individuals:
+        return 0
+        
     seq = range(pop.n)
-    detector = random.sample(seq, number_detector)
-    isChange = 0
-    for i in range(number_detector):
-        temp = pop.individuals[detector[i]]
-        f, g = problem.evaluate(temp.X.reshape(1, -1), False)
-        isChange = 0
-        for j in range(problem.n_obj):
-            if not np.all(f[0] == pop.individuals[detector[i]].F):
-                isChange = 1
-                break
-        if isChange == 1:
-            print("environment has changed")
-            break
-    return isChange
+    detector = random.sample(seq, min(number_detector, pop.n))
+    
+    for i in detector:
+        temp = pop.individuals[i]
+        f, _ = problem.evaluate(temp.X.reshape(1, -1), False)
+        
+        # 检查目标值是否发生变化
+        if not np.allclose(f[0], temp.F):
+            print("环境发生变化")
+            return 1
+            
+    return 0
