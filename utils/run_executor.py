@@ -5,7 +5,7 @@ import traceback
 
 from matplotlib.gridspec import GridSpec
 
-from plots.test_module.draw_population import draw_IGD_curve, draw_PF, draw_PS
+from plots.test_module.draw_population import draw_IGD_curve, draw_PF, draw_PS, draw_selected_chart
 from utils.information_parser import convert_config_to_numeric
 from utils.result_io import save_test_module_information_results
 from views.common.GlobalVar import global_vars
@@ -163,26 +163,7 @@ def listen_pipe(parent_conn, process):
                     information = parent_conn.recv()
                     # print(f"[主进程] 收到子进程信息")
                     save_runtime_population_information(information)
-                    canvas = global_vars['test_module'].get('canvas')
-                    fig = canvas.figure
-                    result_to_show = global_vars['test_module'].get('result_to_show', ['Pareto Front'])
-                    lock = global_vars['test_module']['canvas_lock']
-                    canvas_version =  global_vars['test_module']['canvas_version']
-                    # 获取锁
-                    lock.acquire()
-
-                    # 遍历 fig.axes 和 result_to_show，一一进行绘图
-                    for ax, result_type in zip(fig.axes, result_to_show):
-                        # 根据选择绘制相应的图表
-                        if result_type == 'Pareto Front':
-                            draw_PF(information, ax)
-                        elif result_type == 'IGD':
-                            draw_IGD_curve(information, ax)
-                        elif result_type == 'Pareto Set':
-                            draw_PS(information, ax)
-                    lock.release()
-                    # 如果不是主线程，使用 after 方法在主线程中调用 canvas.draw()
-                    canvas.get_tk_widget().after(0, lambda: canvas_draw(canvas,canvas_version))
+                    draw_chart(information)
                 except EOFError:
                     print("[主进程] Pipe连接已关闭（EOF）")
                     break
@@ -224,3 +205,24 @@ def save_runtime_population_information(information):
 
     # 保存信息
     global_vars['test_module']["runtime_populations"][t][evaluate_times] = information
+
+
+def draw_chart(information):
+     # 更新图表
+    canvas = global_vars['test_module'].get('canvas')
+    fig = canvas.figure
+
+    # 获取要显示的图表类型
+    result_to_show = global_vars['test_module'].get('result_to_show', ['Pareto Front'])
+    lock = global_vars['test_module']['canvas_lock']
+    canvas_version = global_vars['test_module']['canvas_version']
+    lock.acquire()
+
+    # 遍历 fig.axes 和 result_to_show，一一进行绘图
+    for ax, result_type in zip(fig.axes, result_to_show):
+       draw_selected_chart(information, ax, result_type)
+
+    # 更新图表
+    lock.release()
+    # 如果不是主线程，使用 after 方法在主线程中调用 canvas.draw()
+    canvas.get_tk_widget().after(0, lambda: canvas_draw(canvas, canvas_version))
