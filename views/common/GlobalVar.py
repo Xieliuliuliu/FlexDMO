@@ -3,5 +3,6 @@ global_vars = {
         "runtime_config":{},
         "runtime_populations":{}
     },
+    "experiment_module":{},
     "process_manager":{}
 }
