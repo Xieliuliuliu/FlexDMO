@@ -4,6 +4,7 @@ import tkinter as tk
 import ttkbootstrap as ttk
 from PIL import Image, ImageTk  # 导入Pillow库
 
+from views.experiment_module.experiment_module_view import create_experiment_module_view
 from views.resources.style import set_styles
 from views.test_module.test_module_handler import clear_canvas
 from views.test_module.test_module_view import create_test_module_view
@@ -57,6 +58,8 @@ def on_selected_module_change(var, frame_main):
     # 切换到目标模块
     if var == "Test Module":
         create_test_module_view(frame_main)
+    elif var == "Experiment Module":
+        create_experiment_module_view(frame_main)
 
 def create_menu_bar(root):
     """Create menu bar with dark theme."""

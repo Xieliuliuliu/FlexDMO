@@ -59,8 +59,11 @@ def load_problem_data():
 def update_label(label, fill_frame, config_type):
     # 获取选中项
     select_item = global_vars['test_module'][config_type].get()
-    label.config(text=select_item)  # 更新标签文本为选中的动态策略
-
+    
+    # 如果label不为None，则更新标签文本
+    if label is not None:
+        label.config(text=select_item)  # 更新标签文本为选中的动态策略
+    
     """清空并更新填空内容"""
     # 清空当前框架中的内容（如果有）
     for widget in fill_frame.winfo_children():
@@ -83,18 +86,21 @@ def update_label(label, fill_frame, config_type):
     global_vars['test_module']['runtime_config'][config_type] = config  # 保存配置到全局变量
 
     # 动态生成填空内容并监听内容的修改
-    row = 0  # 行号，确保每个参数显示在不同的行中
-    # 动态生成填空内容并监听内容的修改
     for param, default_value in config.items():
-        # 创建标签并设置为 grid
-        param_label = ttk.Label(fill_frame, text=f"{param}: ", font=("Arial", 10))
-        param_label.grid(row=row, column=0, padx=5, pady=2, sticky="w")
+        # 创建参数容器
+        param_frame = ttk.Frame(fill_frame)
+        param_frame.pack(fill="x", pady=2)
 
-        # 创建 Entry 控件并设置为 grid
-        param_entry = ttk.Entry(fill_frame)
+        # 创建标签
+        param_label = ttk.Label(param_frame, text=f"{param}: ", font=("Arial", 10), anchor="w")
+        param_label.pack(side="left", fill="x", padx=1,expand=True)
+
+        
+        # 创建 Entry 控件
+        param_entry = ttk.Entry(param_frame)
         param_entry.insert(0, default_value)  # 设置默认值
-        param_entry.grid(row=row, column=1, padx=5, pady=2)
-
+        param_entry.pack(side="left", fill="x", padx=5)
+        
         # 设置事件监听，实时获取用户修改的配置
         def on_entry_change(event, param=param, entry=param_entry):
             # 更新全局配置，保存用户修改的值
@@ -103,7 +109,6 @@ def update_label(label, fill_frame, config_type):
 
         # 监听内容变化
         param_entry.bind("<KeyRelease>", on_entry_change)  # 监听键盘输入，实时更新
-        row += 1  # 增加行号，确保下一个参数出现在下一行
 
 def on_continue_button_click():
     """按钮点击事件"""

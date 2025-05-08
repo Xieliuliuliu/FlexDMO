@@ -9,6 +9,7 @@ from matplotlib.gridspec import GridSpec
 
 from views.common.GlobalVar import global_vars
 from views.common.common_components import create_column, create_separator
+from views.components.collapsible_frame import CollapsibleFrame
 from views.test_module.test_module_handler import (
     on_dynamic_select, on_search_select, load_dynamic_data,
     load_search_data, on_problem_select, load_problem_data,
@@ -17,6 +18,7 @@ from views.test_module.test_module_handler import (
     on_scale_change
 )
 from plots.test_module.draw_population import draw_IGD_curve, draw_PF, draw_PS
+from views.components.collapsible_listbox import CollapsibleListbox
 
 
 def create_dynamic_strategy_section(frame):
@@ -63,7 +65,7 @@ def create_dynamic_strategy_section(frame):
 
 def create_search_algorithm_section(frame):
     """创建搜索算法部分"""
-    label_search = ttk.Label(frame, text="Search Algorithm", font=("Arial", 12, "bold") ,style='info')
+    label_search = ttk.Label(frame, text="Search Algorithm", font=("Arial", 12, "bold"), style='info')
     label_search.pack(anchor="w", pady=10)
 
     # Create a Frame to hold the Treeview and Scrollbar for Search Algorithm
@@ -90,7 +92,6 @@ def create_search_algorithm_section(frame):
         folder, name, year = data.values()
         tv_search.insert('', 'end', values=(name, year), iid=folder)
 
-
     # Create scrollbar for Treeview (Search Algorithm)
     scrollbar_search = ttk.Scrollbar(search_frame, orient='vertical', command=tv_search.yview)
     tv_search.configure(yscrollcommand=scrollbar_search.set)
@@ -106,7 +107,7 @@ def create_search_algorithm_section(frame):
 
 def create_problem_selection_section(frame):
     """创建问题选择部分"""
-    label_problem = ttk.Label(frame, text="Select Problem", font=("Arial", 12, "bold") ,style='warning')
+    label_problem = ttk.Label(frame, text="Select Problem", font=("Arial", 12, "bold"), style='warning')
     label_problem.pack(anchor="w", pady=10)
 
     # Create a Frame to hold the Treeview and Scrollbar for Problem Selection
@@ -181,38 +182,45 @@ def create_parameter_settings(frame):
 
     # 获取 selected_dynamic 的值
     dynamic_response_name = global_vars['test_module'].get("selected_dynamic")
-    label_algo = ttk.Label(frame, text=dynamic_response_name.get(), font=("Arial", 12, "bold"), style="inverse-success", anchor='center')
-    label_algo.pack(pady=10, fill='x')
-
-    # 创建用于显示填空内容的框架
-    config_for_dynamic_response = ttk.Frame(frame)
-    config_for_dynamic_response.pack(pady=10, fill='x')
+    
+    # 创建Dynamic Strategy的可折叠框架
+    dynamic_collapsible = CollapsibleFrame(frame, dynamic_response_name.get(), style='success')
+    dynamic_collapsible.pack(fill="x", pady=5)
+    config_for_dynamic_response = dynamic_collapsible.get_content_frame()
 
     # 监听 selected_dynamic 的变化，实时更新 Label 和填空内容
-    dynamic_response_name.trace_add("write", lambda *args: update_label(label_algo, config_for_dynamic_response,
-                                                                        "selected_dynamic"))
+    dynamic_response_name.trace_add("write", lambda *args: (
+        dynamic_collapsible.set_title(dynamic_response_name.get()),
+        update_label(None, config_for_dynamic_response, "selected_dynamic")
+    ))
 
+    # 获取 selected_search 的值
     search_name = global_vars['test_module'].get("selected_search")
-    label_search_algo = ttk.Label(frame, text=search_name.get(), font=("Arial", 12, "bold"), style="inverse-info", anchor='center')
-    label_search_algo.pack(pady=10, fill='x')
-
-    config_for_search = ttk.Frame(frame)
-    config_for_search.pack(pady=10, fill='x')
+    
+    # 创建Search Algorithm的可折叠框架
+    search_collapsible = CollapsibleFrame(frame, search_name.get(), style='info')
+    search_collapsible.pack(fill="x", pady=5)
+    config_for_search = search_collapsible.get_content_frame()
 
     # 监听 selected_search 的变化，实时更新 Label 和填空内容
-    search_name.trace_add("write", lambda *args: update_label(label_search_algo, config_for_search, "selected_search"))
+    search_name.trace_add("write", lambda *args: (
+        search_collapsible.set_title(search_name.get()),
+        update_label(None, config_for_search, "selected_search")
+    ))
 
-
+    # 获取 selected_problem 的值
     problem_name = global_vars['test_module'].get("selected_problem")
-    label_problem_algo = ttk.Label(frame, text=problem_name.get(), font=("Arial", 12, "bold"), style="inverse-warning", anchor='center')
-    label_problem_algo.pack(pady=10, fill='x')
-
-    config_for_problem = ttk.Frame(frame)
-    config_for_problem.pack(pady=10, fill='x')
+    
+    # 创建Problem的可折叠框架
+    problem_collapsible = CollapsibleFrame(frame, problem_name.get(), style='warning')
+    problem_collapsible.pack(fill="x", pady=5)
+    config_for_problem = problem_collapsible.get_content_frame()
 
     # 监听 selected_problem 的变化，实时更新 Label 和填空内容
-    problem_name.trace_add("write",
-                           lambda *args: update_label(label_problem_algo, config_for_problem, "selected_problem"))
+    problem_name.trace_add("write", lambda *args: (
+        problem_collapsible.set_title(problem_name.get()),
+        update_label(None, config_for_problem, "selected_problem")
+    ))
 
 
 def create_result_display(frame):
@@ -231,13 +239,8 @@ def create_result_display(frame):
     top_frame = ttk.Frame(result_frame)
     top_frame.pack(side="top", fill="x", pady=(0, 10))
 
-    result_label = ttk.Label(top_frame,
-                           text="Result Indicator:",
-                           font=("Arial", 11))
-    result_label.pack(side="left", padx=(0, 5))
-
-    # 创建 Listbox 用于多选
-    result_listbox = tk.Listbox(top_frame, selectmode=tk.MULTIPLE, height=3)
+    # 创建可折叠的Listbox
+    result_listbox = CollapsibleListbox(top_frame, "Result Indicator", style='primary')
     result_listbox.pack(side="left", fill='x', expand=True)
     result_listbox.insert(tk.END, "Pareto Front")
     result_listbox.insert(tk.END, "Pareto Set")
