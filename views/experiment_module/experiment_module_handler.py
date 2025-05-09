@@ -1,10 +1,15 @@
+import gc
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 import os
+import ttkbootstrap as ttk
+from ttkbootstrap.dialogs import Messagebox
 
+from utils.run_executor_for_experiment import begin_running
 from views.common.GlobalVar import global_vars
 from utils.information_parser import get_dynamic_response_config, get_search_algorithm_config, get_problem_config
 from views.components.collapsible_frame import CollapsibleFrame
+from views.components.task_progress import TaskProgress
 
 def update_label(fill_frame, config_type, config):
     """更新标签内容"""
@@ -47,6 +52,48 @@ def update_label(fill_frame, config_type, config):
         # 监听内容变化
         param_entry.bind("<KeyRelease>", on_entry_change)
 
+def create_tasks(problem, dynamic, search, tau_values, n_values, runs, run_frame, runtime_config):
+    """创建任务列表
+    
+    Args:
+        problem: 问题名称
+        dynamic: 动态策略
+        search: 搜索算法
+        tau_values: tau值列表
+        n_values: n值列表
+        runs: 运行次数
+        run_frame: 运行管理框架
+        runtime_config: 运行时配置
+    
+    Returns:
+        list: 任务列表
+    """
+    tasks = []
+    for tau in tau_values:
+        for n in n_values:
+            for run in range(runs):
+                # 从runtime_config获取配置信息
+                problem_config = runtime_config.get(problem, {})
+                dynamic_config = runtime_config.get(dynamic, {})
+                search_config = runtime_config.get(search, {})
+                
+                # 创建任务进度条组件
+                task = TaskProgress(
+                    run_frame, 
+                    problem, 
+                    dynamic, 
+                    search, 
+                    tau, 
+                    n, 
+                    run+1, 
+                    runs,
+                    problem_config=problem_config,
+                    dynamic_config=dynamic_config,
+                    search_config=search_config
+                )
+                tasks.append(task)
+    return tasks
+
 def on_add_button_click(event=None):
     """按钮点击事件"""
     # 获取所有配置
@@ -64,8 +111,11 @@ def on_add_button_click(event=None):
         missing_configs.append("问题")
     
     if len(missing_configs) > 0:
-        messagebox.showwarning("配置不完整", 
-                             f"请选择以下配置：\n{', '.join(missing_configs)}")
+        Messagebox.show_warning(
+            title="配置不完整",
+            message=f"请选择以下配置：\n{', '.join(missing_configs)}",
+            parent=global_vars['experiment_module']['run_frame'].winfo_toplevel()
+        )
         return
     
     # 获取运行时配置
@@ -74,58 +124,26 @@ def on_add_button_click(event=None):
     # 获取运行管理框架
     run_frame = global_vars['experiment_module']['run_frame']
     
-    # 为每个组合创建进度条
+    # 获取tau、n和runs的值
+    tau_values = [int(x.strip()) for x in global_vars['experiment_module'].get('tau', tk.StringVar()).get().split(',')]
+    n_values = [int(x.strip()) for x in global_vars['experiment_module'].get('n', tk.StringVar()).get().split(',')]
+    runs = int(global_vars['experiment_module'].get('runs', tk.StringVar()).get())
+    
+    # 初始化任务列表
+    if 'tasks' not in global_vars['experiment_module']:
+        global_vars['experiment_module']['tasks'] = []
+    
+    # 为每个组合创建任务
     for problem in selected_problem:
         for dynamic in selected_dynamic:
             for search in selected_search:
-                # 创建任务框架
-                task_frame = ttk.Frame(run_frame)
-                task_frame.pack(fill="x", padx=5, pady=2)
-                
-                # 创建左侧信息框架
-                info_frame = ttk.Frame(task_frame)
-                info_frame.pack(side="left", fill="x")
-                
-                # 创建任务信息标签
-                task_info = f"{problem} - {dynamic} - {search}"
-                task_label = ttk.Label(info_frame, text=task_info)
-                task_label.pack(side="left", padx=5)
-                
-                # 创建右侧控制框架
-                control_frame = ttk.Frame(task_frame)
-                control_frame.pack(side="right")
-                
-                # 创建进度条
-                progress = ttk.Progressbar(control_frame, length=200, mode='determinate')
-                progress.pack(side="left", padx=5)
-                
-                # 创建状态标签
-                status_label = ttk.Label(control_frame, text="等待中")
-                status_label.pack(side="left", padx=5)
-                
-                # 保存进度条和状态标签的引用
-                if 'tasks' not in global_vars['experiment_module']:
-                    global_vars['experiment_module']['tasks'] = []
-                global_vars['experiment_module']['tasks'].append({
-                    'frame': task_frame,
-                    'progress': progress,
-                    'status': status_label,
-                    'info': task_info
-                })
-    
-    print("\n=== 实验配置 ===")
-    for category, items in [
-        ('动态策略', selected_dynamic),
-        ('搜索算法', selected_search),
-        ('问题', selected_problem)
-    ]:
-        print(f"\n{category}:")
-        for item in items:
-            print(f"  {item}")
-            if item in runtime_config:
-                for param, value in runtime_config[item].items():
-                    print(f"    {param}: {value}")
-    print("\n=== 配置结束 ===")
+                tasks = create_tasks(
+                    problem, dynamic, search,
+                    tau_values, n_values, runs,
+                    run_frame, runtime_config
+                )
+                global_vars['experiment_module']['tasks'].extend(tasks)
+
 
 def create_config_frame(frame, value, style, get_config_func, type, after=None):
     """创建配置界面
@@ -198,3 +216,106 @@ def on_problem_select(tv_problem):
     selected_values = [tv_problem.item(item, 'values')[0] for item in selected_items]
     global_vars['experiment_module']['selected_problem'] = selected_values
     update_all_configs()
+
+def on_remove_button_click(event=None):
+    """删除所有运行卡片"""
+    # 检查是否有运行中的任务
+    if 'tasks' not in global_vars['experiment_module']:
+        return
+        
+    tasks = global_vars['experiment_module']['tasks']
+    if not tasks:
+        return
+        
+    # 弹出确认对话框
+    result = Messagebox.show_question(
+        title="Confirm Delete",
+        message="Are you sure you want to delete all running cards?",
+        buttons=["Yes", "No"],
+        parent=global_vars['experiment_module']['run_frame'].winfo_toplevel()
+    )
+    
+    if result == "Yes":
+        # 销毁所有任务卡片
+        for task in tasks:
+            task.destroy()
+        # 清空任务列表
+        global_vars['experiment_module']['tasks'] = []
+        # 释放监听线程
+        
+        for task in tasks:
+            if task.process:
+                task.process.terminate()
+                task.process.join()
+                task.process = None
+        gc.collect()
+
+def on_pause_button_click(event=None):
+    """暂停/恢复按钮点击事件处理"""
+    # 获取所有任务卡片
+    task_cards = global_vars['experiment_module']['tasks']
+    
+    # 找到所有运行中的任务
+    running_tasks = [card for card in task_cards if card.get_info()['status'] == 'running']
+    # 找到所有暂停中的任务
+    paused_tasks = [card for card in task_cards if card.get_info()['status'] == 'pause']
+    
+    if running_tasks:  # 如果有运行中的任务，则暂停它们
+        # 更新所有运行中任务的状态
+        for task in running_tasks:
+            if hasattr(task, 'process_state') and task.process_state:
+                task.process_state.value = 'pause'
+            task.update_status('pause')
+            task.status_label.configure(foreground='orange')  # 暂停状态显示为橙色
+    elif paused_tasks:  # 如果有暂停的任务，则恢复它们
+        # 更新所有暂停任务的状态
+        for task in paused_tasks:
+            if hasattr(task, 'process_state') and task.process_state:
+                task.process_state.value = 'running'
+            task.update_status('running')
+            task.status_label.configure(foreground='blue')  # 运行状态显示为蓝色
+
+def on_start_button_click(event=None):
+    """开始按钮点击事件处理"""
+    # 获取并行进程数
+    parallel_processes = int(global_vars['experiment_module']['process_num'].get())
+    
+    # 获取所有任务卡片
+    task_cards = global_vars['experiment_module']['tasks']
+    
+    # 计算当前运行中的任务数
+    running_count = sum(1 for card in task_cards if card.get_info()['status'] == 'running')
+    
+    # 如果运行中的任务数已经达到或超过并行进程数，直接返回
+    if running_count >= parallel_processes:
+        return
+    
+    # 计算还可以启动多少个任务
+    available_slots = parallel_processes - running_count
+    
+    # 获取所有等待中的任务
+    waiting_tasks = [card for card in task_cards if card.get_info()['status'] == 'waiting']
+    
+    # 更新等待中的任务状态
+    for task in waiting_tasks[:available_slots]:
+        start_task(task)
+
+def start_task(task):
+    """启动单个任务"""
+    # 更新任务状态为running
+    task.update_status('running')
+    # 更新界面显示
+    task.update_progress(0)  # 重置进度条
+    # 更新任务卡片样式（如果需要）
+    task.status_label.configure(foreground='blue')  # 可以根据需要修改颜色
+    # 开始运行任务，并传入完成回调函数
+    begin_running(task, on_task_complete)
+
+def on_task_complete(completed_task):
+    """任务完成时的回调函数"""
+    # 任务完成后，尝试启动新的等待任务
+    on_start_button_click()
+    
+    # 这里可以添加其他完成后的处理逻辑
+    completed_task.update_status('completed')
+    completed_task.status_label.configure(foreground='green')

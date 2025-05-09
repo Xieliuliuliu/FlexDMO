@@ -82,7 +82,7 @@ def run_in_test_mode_process(response_strategy, search_algorithm, problem_name, 
 
         # 实例化对象
         response_instance = ResponseClass(**convert_config_to_numeric(runtime_config['selected_dynamic']))
-        search_instance = SearchClass(**convert_config_to_numeric(runtime_config['selected_search']), state=state,pip=child_conn)
+        search_instance = SearchClass(**convert_config_to_numeric(runtime_config['selected_search']), state=state, pip=child_conn, mode='test')
         problem_instance = ProblemClass(**convert_config_to_numeric(runtime_config['selected_problem']))
 
         search_instance.optimize(problem_instance, response_instance)

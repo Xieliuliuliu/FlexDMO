@@ -4,15 +4,17 @@ import time
 from multiprocessing import current_process
 
 class Algorithm:
-    def __init__(self,state=None,pip=None):
+    def __init__(self,state=None,pip=None,mode='test'):
         """
         基础算法抽象类。
-        :param n_gen: 进化代数
-        :param verbose: 是否打印日志
+        :param state: 进程状态
+        :param pip: 进程间通信管道
+        :param mode: 运行模式，'test'或'experiment'
         """
         self.history = {"runtime":{},"settings": None}  # 用于记录信息
         self.state = state
         self.pip = pip
+        self.mode = mode  # 保存运行模式
 
     def optimize(self, problem, response_strategy):
         """
@@ -44,7 +46,23 @@ class Algorithm:
         self.history["runtime"][problem.t][problem.evaluate_time] = population.copy()
 
         if self.pip is not None:
-            self.pip.send({"settings":self.history["settings"],'POS':problem.get_pareto_set(),"POF":problem.get_pareto_front(),"bound":[problem.xl,problem.xu],'t':problem.t, 'evaluate_times':problem.evaluate_time,'population':population})
+            if self.mode == 'test':
+                # 测试模式：发送完整信息
+                self.pip.send({
+                    "settings": self.history["settings"],
+                    'POS': problem.get_pareto_set(),
+                    "POF": problem.get_pareto_front(),
+                    "bound": [problem.xl, problem.xu],
+                    't': problem.t,
+                    'evaluate_times': problem.evaluate_time,
+                    'population': population
+                })
+            elif self.mode == 'experiment':
+                # 实验模式：只发送进度信息
+                progress = ((problem.t + 1) / (problem.total_change_time)) * 100
+                self.pip.send({
+                    'progress': progress
+                })
 
     def control_process(self):
         current_state = self.state
