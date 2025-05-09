@@ -151,7 +151,6 @@ def listen_pipe(parent_conn, process):
             scale.configure(state='disabled')
             
         while True:
-            time.sleep(0.2)  # 避免空转
 
             # 检查子进程是否还活着
             if not process.is_alive():
@@ -173,9 +172,11 @@ def listen_pipe(parent_conn, process):
         print("[主进程] close parent")
         # 在结束时启用进度条
         scale = global_vars['test_module'].get('scale')
-        print("正在保存运行数据")
         try:
-            save_test_module_information_results()
+            # 检查是否需要保存结果
+            if global_vars['test_module']['save_result'].get():
+                print("正在保存运行数据")
+                save_test_module_information_results()
         except Exception as e:
             print(f"[主进程] 保存数据异常")
         if scale:

@@ -38,7 +38,7 @@ class DP10(Problem):
 
         return np.column_stack([f1, f2])
 
-    def get_pareto_front(self, t=None):
+    def _calculate_pareto_front(self, t=None):
         if t is None:
             t = self.t
 
@@ -55,7 +55,7 @@ class DP10(Problem):
         f2 = np.sin(0.5 * np.pi * x) ** 2 + np.sin(0.5 * np.pi * x) * cos_px ** 2 + G
         return self.get_nondominate([f1, f2])
 
-    def get_pareto_set(self, t=None):
+    def _calculate_pareto_set(self, t=None):
         if t is None:
             t = self.t
 

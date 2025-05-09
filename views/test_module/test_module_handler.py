@@ -280,9 +280,16 @@ def update_result_display(scale, result_data, param_text, metric_value):
     # 直接显示settings中的所有字段
     param_text.insert('1.0', "Settings:\n")
     for key, value in settings.items():
+        # 跳过以_开头的属性
+        if key.startswith('_'):
+            continue
+            
         if isinstance(value, dict):
             param_text.insert(tk.END, f"\n{key}:\n")
             for sub_key, sub_value in value.items():
+                # 跳过以_开头的子属性
+                if sub_key.startswith('_'):
+                    continue
                 param_text.insert(tk.END, f"  {sub_key}: {sub_value}\n")
         else:
             param_text.insert(tk.END, f"{key}: {value}\n")

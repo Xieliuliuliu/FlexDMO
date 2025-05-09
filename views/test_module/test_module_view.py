@@ -245,6 +245,19 @@ def create_result_display(frame):
     result_listbox.insert(tk.END, "Pareto Front")
     result_listbox.insert(tk.END, "Pareto Set")
     result_listbox.insert(tk.END, "IGD")
+    
+    # 添加保存结果的单选框
+    save_var = tk.BooleanVar(value=False)
+    save_checkbox = ttk.Checkbutton(
+        top_frame,
+        text="Save Results",
+        variable=save_var,
+        style='primary.TCheckbutton'
+    )
+    save_checkbox.pack(side="left", padx=(10, 0))
+    
+    # 将保存选项添加到全局变量中
+    global_vars['test_module']['save_result'] = save_var
 
     # 2. 中间内容区域（仅图表）
     content_frame = ttk.Frame(result_frame)
@@ -256,9 +269,9 @@ def create_result_display(frame):
     # 绑定 Listbox 的选择变化事件
     def on_result_select(event):
         # 获取选中的选项
-        selected_indices = result_listbox.curselection()
+        selected_indices = result_listbox.listbox.curselection()
         # 更新全局变量中的 selected_results
-        global_vars['test_module']['result_to_show'] = [result_listbox.get(i) for i in selected_indices]
+        global_vars['test_module']['result_to_show'] = [result_listbox.listbox.get(i) for i in selected_indices]
 
         # 获取当前 fig 中的 ax 数目
         result_to_show = global_vars['test_module']['result_to_show']
@@ -277,7 +290,19 @@ def create_result_display(frame):
                 fig.add_subplot(required_ax_count, 1, i + 1)
             global_vars['test_module']['canvas_version']+=1
             lock.release()
+    
+    # 绑定事件
     result_listbox.bind('<<ListboxSelect>>', on_result_select)
+    
+    # 确保在绑定事件后设置默认选择
+    def set_default_selection():
+        result_listbox.listbox.selection_set(0)
+        # 手动触发选择事件
+        on_result_select(None)
+    
+    # 使用 after 方法确保在组件完全初始化后设置默认选择
+    result_listbox.after(100, set_default_selection)
+
     # 图表区域（自适应）
     fig= plt.figure(figsize=(6, 3))
     fig.add_subplot(1,1,1)

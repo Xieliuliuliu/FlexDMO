@@ -21,7 +21,7 @@ class DF1(Problem):
 
         return np.column_stack([f1, f2])
 
-    def get_pareto_front(self, t=None):
+    def _calculate_pareto_front(self, t=None):
         if t is None:
             t = self.t
         times = t / self.n
@@ -32,7 +32,7 @@ class DF1(Problem):
 
         return np.column_stack([f1, f2])
 
-    def get_pareto_set(self, t=None):
+    def _calculate_pareto_set(self, t=None):
         if t is None:
             t = self.t
         times = t / self.n

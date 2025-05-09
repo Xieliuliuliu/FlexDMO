@@ -25,7 +25,7 @@ class DP2(Problem):
         f1 = np.where(f1 < 1e-3, 0.0, f1)
         return np.column_stack([f1, f2])
 
-    def get_pareto_front(self, t=None):
+    def _calculate_pareto_front(self, t=None):
         if t is None:
             t = self.t
 
@@ -39,7 +39,7 @@ class DP2(Problem):
 
         return np.column_stack([f1, f2])
 
-    def get_pareto_set(self, t=None):
+    def _calculate_pareto_set(self, t=None):
         if t is None:
             t = self.t
         times = t / self.n

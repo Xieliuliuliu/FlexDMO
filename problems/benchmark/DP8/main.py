@@ -29,7 +29,8 @@ class DP8(Problem):
         f2 = g * (1 - x0 + sin_term)
         return np.column_stack([f1, f2])
 
-    def get_pareto_front(self, t=None):
+
+    def _calculate_pareto_front(self, t=None):
         if t is None:
             t = self.t
         x = np.linspace(0, 1, 1500)
@@ -40,7 +41,7 @@ class DP8(Problem):
         f2 = g * (1 - x + sin_term)
         return self.get_nondominate([f1, f2])
 
-    def get_pareto_set(self, t=None):
+    def _calculate_pareto_set(self, t=None):
         PS = np.zeros((1500, self.decision_num))
         PS[:, 0] = np.linspace(0, 1, 1500)  # 第一维在[0,1]均匀分布
         if t is not None:

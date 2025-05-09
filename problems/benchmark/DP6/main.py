@@ -31,7 +31,7 @@ class DP6(Problem):
         f2 = np.where(f2<1e-6, 0, f2)
         return np.column_stack([f1, f2])
 
-    def get_pareto_front(self, t=None):
+    def _calculate_pareto_front(self, t=None):
         if t is None:
             t = self.t
 
@@ -47,7 +47,7 @@ class DP6(Problem):
         f2 = g * (1 - x + sin_term)
         return np.column_stack([f1, f2])
 
-    def get_pareto_set(self, t=None):
+    def _calculate_pareto_set(self, t=None):
         if t is None:
             t = self.t
 

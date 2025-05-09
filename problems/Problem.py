@@ -27,6 +27,12 @@ class Problem:
         # 下次是否需要更新
         self.need_change = False
 
+        # 初始化缓存
+        self._pf_cache = None  # 缓存 Pareto Front
+        self._ps_cache = None  # 缓存 Pareto Set
+        self._last_t_ps = None  # 记录上次计算的时间步
+        self._last_t_pf = None  # 记录上次计算的时间步
+
     def evaluate(self, X, need_count=True, t=None):
         """
         返回目标函数值，形状：[n_samples, n_obj]
@@ -67,11 +73,44 @@ class Problem:
         return self.xl, self.xu
 
     def get_pareto_front(self, t=None):
-        raise NotImplementedError
+        if t is None:
+            t = self.t
+        # 如果时间步相同，直接返回缓存的结果
+        if t == self._last_t_pf:
+            return self._pf_cache
+        
+        # 计算新的 Pareto Front
+        pf = self._calculate_pareto_front(t)
+        
+        # 更新缓存
+        self._pf_cache = pf
+        self._last_t_pf = t
+        
+        return pf
 
     def get_pareto_set(self, t=None):
+        if t is None:
+            t = self.t
+        # 如果时间步相同，直接返回缓存的结果
+        if t == self._last_t_ps:
+            return self._ps_cache
+        
+        # 计算新的 Pareto Set
+        ps = self._calculate_pareto_set(t)
+        
+        # 更新缓存
+        self._ps_cache = ps
+        self._last_t_ps = t
+        
+        return ps
+
+    def _calculate_pareto_front(self, t=None):
+        """实际计算 Pareto Front 的方法，需要子类实现"""
         raise NotImplementedError
 
+    def _calculate_pareto_set(self, t=None):
+        """实际计算 Pareto Set 的方法，需要子类实现"""
+        raise NotImplementedError
 
     def get_nondominate(self, f):
         """
