@@ -37,20 +37,6 @@ class Algorithm:
                 "search_algorithm_params": extract_simple_attrs(self),
                 "response_strategy_params":  extract_simple_attrs(response_strategy),
             }
-            # os.makedirs("logs", exist_ok=True)
-            # with open(f"logs/settings_info.json", "w", encoding="utf-8") as f:
-            #     json.dump(self.history["settings"], f, indent=2)
-            #
-            # # ✅ 清空 runtime_info.jsonl（如果存在）
-            # open("logs/runtime_info.jsonl", "w").close()
-            # info = {
-            #     "t": problem.t,
-            #     "evaluate_time": problem.evaluate_time,
-            #     "population": population.to_dict()
-            # }
-            #
-            # with open(f"logs/runtime_info.jsonl", "a", encoding="utf-8") as f:
-            #     f.write(json.dumps(info) + "\n")
         # 记录
         if problem.t not in self.history["runtime"]:
             self.history["runtime"][problem.t] = {}
