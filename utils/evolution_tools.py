@@ -5,48 +5,57 @@ from problems.Problem import Problem
 
 
 def quick_non_dominate_sort(population):
-    """快速非支配排序
+    """快速非支配排序（向量化实现）
     
     Args:
         population: 待排序的种群
     """
+    from typing import List
+    
     if not population.individuals:
         return
-        
-    # 初始化支配关系
-    for individual in population.individuals:
-        individual.dominate = []
-        individual.bedominated = 0
-        
-    # 计算支配关系
-    for i, ind1 in enumerate(population.individuals):
-        for j, ind2 in enumerate(population.individuals):
-            if i != j:
-                domination = isDominated(ind1, ind2)
-                if domination == 1:  # ind1支配ind2
-                    ind1.dominate.append(ind2)
-                elif domination == 0:  # ind1被ind2支配
-                    ind1.bedominated += 1
-                    
-    # 生成非支配层
-    front = []
-    for individual in population.individuals:
-        if individual.bedominated == 0:
-            individual.rank = 1
-            front.append(individual)
-            
-    # 迭代生成后续的非支配层
-    current_rank = 1
-    while front:
-        next_front = []
-        for non_dominated in front:
-            for dominated in non_dominated.dominate:
-                dominated.bedominated -= 1
-                if dominated.bedominated == 0:
-                    dominated.rank = current_rank + 1
-                    next_front.append(dominated)
-        current_rank += 1
-        front = next_front
+    
+    # 提取所有个体的目标函数值
+    n = len(population.individuals)
+    objectives = np.array([ind.F for ind in population.individuals])
+    
+    # 1. 计算支配关系矩阵 (n, n)
+    # 使用广播比较所有个体对 (i,j): [n,1,m] <= [1,n,m] → [n,n,m]
+    less_or_equal = np.all(objectives[:, None] <= objectives[None, :], axis=2)
+    strictly_less = np.any(objectives[:, None] < objectives[None, :], axis=2)
+    domination = less_or_equal & strictly_less
+
+    # 排除自支配 (i,i)
+    np.fill_diagonal(domination, False)
+
+    # 2. 计算被支配次数 (axis=0: 列求和)
+    dominated_counts = np.sum(domination, axis=0)
+
+    # 3. 分配前沿
+    fronts = []
+    remaining_mask = np.ones(n, dtype=bool)  # 未分配个体掩码
+
+    while np.any(remaining_mask):
+        # 当前前沿：remaining中未被支配的个体
+        current_front = np.where(remaining_mask & (dominated_counts == 0))[0]
+        fronts.append(current_front)
+
+        # 更新remaining_mask
+        remaining_mask[current_front] = False
+
+        # 向量化更新被支配次数：当前前沿支配的所有remaining个体计数减1
+        if np.any(remaining_mask):
+            # 获取remaining个体的索引
+            remaining_indices = np.where(remaining_mask)[0]
+
+            # 计算被当前前沿支配的remaining个体
+            dominated_by_front = np.sum(domination[current_front][:, remaining_indices], axis=0)
+            dominated_counts[remaining_indices] -= dominated_by_front
+    
+    # 将分层结果设置到种群中
+    for i, front in enumerate(fronts):
+        for idx in front:
+            population.individuals[idx].rank = i
 
 
 def crowd_selection(population, N):
