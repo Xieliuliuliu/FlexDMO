@@ -220,7 +220,7 @@ def select_save_path(event=None):
     # 获取当前保存路径
     current_path = global_vars['experiment_module']['save_path'].get()
     if not os.path.exists(current_path):
-        current_path = os.path.join(os.getcwd(), "results").replace("/", "\\")
+        current_path = os.path.join(os.getcwd(), "results", "experiment_module").replace("/", "\\")
     
     # 打开文件夹选择对话框
     save_path = filedialog.askdirectory(
@@ -231,10 +231,7 @@ def select_save_path(event=None):
     # 如果用户选择了路径，则更新
     if save_path:
         global_vars['experiment_module']['save_path'].set(save_path.replace("/", "\\"))
-    else:
-        # 如果用户取消选择，则设置为项目根目录下的results
-        default_path = os.path.join(os.getcwd(), "results").replace("/", "\\")
-        global_vars['experiment_module']['save_path'].set(default_path)
+
 
 def create_run_management(frame):
     """创建运行管理部分"""
