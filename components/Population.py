@@ -77,15 +77,15 @@ class Population:
         for ind in self.individuals:
             result["decision"].append(ind.X.tolist())
 
-            if ind.F is not None:
-                result["objective"].append(ind.F.tolist())
-            else:
-                pass
+            # if ind.F is not None:
+            #     result["objective"].append(ind.F.tolist())
+            # else:
+            #     pass
 
-            if ind.G is not None:
-                result["constrain"].append(ind.G.tolist())
-            else:
-                pass
+            # if ind.G is not None:
+            #     result["constrain"].append(ind.G.tolist())
+            # else:
+            #     pass
 
         return result
 
