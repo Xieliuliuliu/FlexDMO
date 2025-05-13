@@ -4,6 +4,10 @@ import threading
 import traceback
 from utils.run_executor import load_main_class_from_folder, convert_config_to_numeric
 import time
+import json
+import numpy as np
+from views.common.GlobalVar import global_vars
+from utils.result_io import save_experiment_module_information_results
 
 def begin_running(task_card, on_complete=None):
     """开始运行实验任务
@@ -14,7 +18,8 @@ def begin_running(task_card, on_complete=None):
     """
     # 获取任务信息
     task_info = task_card.get_info()
-    
+    # 保存结果
+    save_path = global_vars['experiment_module']['save_path'].get()
     # 创建进程间通信对象
     manager = Manager()
     state = manager.Value('c', 'running')
@@ -24,6 +29,7 @@ def begin_running(task_card, on_complete=None):
     p = Process(
         target=run_experiment_process,
         args=(
+            save_path,
             task_info['problem'],
             task_info['dynamic'],
             task_info['search'],
@@ -55,7 +61,7 @@ def begin_running(task_card, on_complete=None):
         name=f"Exp_{task_info['problem']}_{task_info['dynamic']}_{task_info['search']}_{task_info['tau']}_{task_info['n']}_{task_info['run']}_listen"
     ).start()
 
-def run_experiment_process(problem, dynamic, search, tau, n, run, problem_config, dynamic_config, search_config, state, child_conn):
+def run_experiment_process(save_path, problem, dynamic, search, tau, n, run, problem_config, dynamic_config, search_config, state, child_conn):
     """在子进程中运行实验
     
     Args:
@@ -99,6 +105,10 @@ def run_experiment_process(problem, dynamic, search, tau, n, run, problem_config
         
         # 运行优化
         search_instance.optimize(problem_instance, response_instance)
+        
+
+        save_experiment_module_information_results(search_instance.history, save_path)
+        
         print("run experiment process end")
     except Exception as e:
         print(f"[Error in experiment process]: {e}")

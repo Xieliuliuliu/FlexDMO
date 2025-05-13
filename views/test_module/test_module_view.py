@@ -2,6 +2,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 from functools import partial
+import os
 
 from matplotlib import pyplot as plt, gridspec
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -14,10 +15,9 @@ from views.test_module.test_module_handler import (
     on_dynamic_select, on_search_select, load_dynamic_data,
     load_search_data, on_problem_select, load_problem_data,
     update_label, on_continue_button_click, on_pause_button_click,
-    on_stop_button_click, load_selected_result, update_progress_control, update_result_display,
-    on_scale_change
+    on_stop_button_click, update_progress_control,
+    on_scale_change, load_selected_result, update_result_display
 )
-from plots.test_module.draw_population import draw_IGD_curve, draw_PF, draw_PS
 from views.components.collapsible_listbox import CollapsibleListbox
 
 
@@ -440,25 +440,51 @@ def create_result_selection(frame):
     row1 = ttk.Frame(selection_frame)
     row1.pack(fill='x', pady=(0, 5), expand=True)
 
-    # 算法选择下拉框
-    algo_combobox = ttk.Combobox(
-        row1,
-        width=30,
-        state='readonly'
+    # 创建文件选择框架
+    file_frame = ttk.Frame(row1)
+    file_frame.grid(row=0, column=0, sticky='ew', padx=(0, 5))
+    row1.grid_columnconfigure(0, weight=4)  # 文件选择框架占据4份
+
+    # 创建文件路径输入框
+    file_path_var = tk.StringVar()
+    file_entry = ttk.Entry(file_frame, textvariable=file_path_var, state='readonly')
+    file_entry.pack(side='left', padx=(0, 5))
+
+    # 创建文件选择按钮
+    def select_history_file():
+        from tkinter import filedialog
+        from views.test_module.test_module_handler import load_selected_result
+        
+        initial_dir = os.path.join(os.getcwd(), "results")
+        file_path = filedialog.askopenfilename(
+            title="选择历史记录文件",
+            initialdir=initial_dir,
+            filetypes=[("JSON files", "*.json")]
+        )
+        
+        if file_path:
+            file_path_var.set(file_path)
+            # 加载选中的结果文件
+            result = load_selected_result(file_path)
+            if result:
+                # 从全局变量获取scale和其他控件
+                scale = global_vars['test_module'].get('scale')
+                current_label = global_vars['test_module'].get('current_label')
+                total_label = global_vars['test_module'].get('total_label')
+                
+                # 更新显示
+                update_result_display(scale, result, param_text, metric_value)
+                # 调用 on_scale_change 更新图表
+                if scale and current_label and total_label:
+                    on_scale_change(scale.get(), current_label, total_label)
+
+    select_btn = ttk.Button(
+        file_frame, 
+        text="选择文件", 
+        command=select_history_file,
+        width=10
     )
-    algo_combobox.grid(row=0, column=0, sticky='ew', padx=(0, 5))
-    row1.grid_columnconfigure(0, weight=4)  # 下拉框占据4份
-
-    # 绑定下拉框点击事件
-    def on_combobox_click(event):
-        from views.test_module.test_module_handler import update_result_combobox
-        update_result_combobox(algo_combobox)
-
-    algo_combobox.bind('<Button-1>', on_combobox_click)  # 点击时刷新列表
-
-    # 初始更新结果列表
-    from views.test_module.test_module_handler import update_result_combobox
-    update_result_combobox(algo_combobox)
+    select_btn.pack(side='left')
 
     # ===== 第二行：指标选择 =====
     row2 = ttk.Frame(selection_frame)
@@ -483,14 +509,14 @@ def create_result_selection(frame):
     # 绑定指标选择事件
     def on_metric_change(event):
         from views.test_module.test_module_handler import on_metric_change as handler_on_metric_change
-        handler_on_metric_change(event, algo_combobox, metric_var, metric_value)
+        handler_on_metric_change(event, file_path_var, metric_var, metric_value)
     
     metric_combobox.bind('<<ComboboxSelected>>', on_metric_change)
 
     # 在加载结果时也更新指标显示
     def on_load_button_click():
         from views.test_module.test_module_handler import on_load_button_click as handler_on_load_button_click
-        handler_on_load_button_click(algo_combobox, metric_var, metric_value, param_text)
+        handler_on_load_button_click(file_path_var, metric_var, metric_value, param_text)
 
     load_button = ttk.Button(
         row1,

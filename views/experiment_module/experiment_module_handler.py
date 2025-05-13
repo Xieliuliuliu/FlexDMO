@@ -235,7 +235,7 @@ def on_remove_button_click(event=None):
         parent=global_vars['experiment_module']['run_frame'].winfo_toplevel()
     )
     
-    if result == "Yes":
+    if result == "Yes" or result == "确认":
         # 销毁所有任务卡片
         for task in tasks:
             task.destroy()

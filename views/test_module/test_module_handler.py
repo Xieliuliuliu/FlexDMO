@@ -236,7 +236,7 @@ def load_selected_result(selected_result):
     """加载选中的结果文件
     
     Args:
-        selected_result (str): 选中的结果显示名称
+        selected_result (str): 选中的结果显示名称或文件路径
         
     Returns:
         dict: 加载的结果数据，如果加载失败则返回None
@@ -244,9 +244,8 @@ def load_selected_result(selected_result):
     if not selected_result:
         return None
         
-    # 将显示名称转换回文件名
-    file_name = selected_result.replace(' ', '_') + '.json'
-    file_path = os.path.join("results/test_module", file_name)
+    # 如果输入已经是完整的文件路径，直接使用
+    file_path = selected_result
     
     # 加载结果
     result = load_test_module_information_results(file_path)
@@ -444,17 +443,20 @@ def update_metric_display(result, metric_name, metric_value):
         print(f"[错误] 更新指标显示时出错: {str(e)}")
         metric_value.config(text="0.0000")
 
-def on_load_button_click(algo_combobox, metric_var, metric_value, param_text):
+def on_load_button_click(file_path_var, metric_var, metric_value, param_text):
     """处理加载按钮点击事件
     
     Args:
-        algo_combobox: 算法选择下拉框
+        file_path_var: 文件路径变量
         metric_var: 指标变量
         metric_value: 指标值显示标签
         param_text: 参数显示文本框
     """
-    selected_result = algo_combobox.get()
-    result = load_selected_result(selected_result)
+    file_path = file_path_var.get()
+    if not file_path:
+        return
+        
+    result = load_selected_result(file_path)
     if result:
         # 获取进度条
         scale = global_vars['test_module'].get('scale')
@@ -468,19 +470,20 @@ def on_load_button_click(algo_combobox, metric_var, metric_value, param_text):
         update_metric_display(result, metric_var.get(), metric_value)
         
         # 调用 on_scale_change 更新图表
-        on_scale_change(scale.get(), current_label, total_label)
+        if scale and current_label and total_label:
+            on_scale_change(scale.get(), current_label, total_label)
 
-def on_metric_change(event, algo_combobox, metric_var, metric_value):
+def on_metric_change(event, file_path_var, metric_var, metric_value):
     """处理指标选择变化事件
     
     Args:
         event: 事件对象
-        algo_combobox: 算法选择下拉框
+        file_path_var: 文件路径变量
         metric_var: 指标变量
         metric_value: 指标值显示标签
     """
-    selected_result = algo_combobox.get()
-    if selected_result:
-        result = load_selected_result(selected_result)
+    file_path = file_path_var.get()
+    if file_path:
+        result = load_selected_result(file_path)
         if result:
             update_metric_display(result, metric_var.get(), metric_value)

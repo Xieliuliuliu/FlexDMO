@@ -299,7 +299,7 @@ def create_run_management(frame):
     
     # 添加保存路径设置
     ttk.Label(save_path_frame, text="Save Path:").pack(side="left", padx=2)
-    save_path_var = tk.StringVar(value=os.path.join(os.getcwd(), "results").replace("/", "\\"))
+    save_path_var = tk.StringVar(value=os.path.join(os.getcwd(), "results", "experiment_module").replace("/", "\\"))
     save_path_entry = ttk.Entry(save_path_frame, textvariable=save_path_var)
     save_path_entry.pack(side="left", fill="x", expand=True, padx=2)
     save_path_entry.bind("<Button-1>", select_save_path)  # 点击输入框时打开选择对话框
