@@ -24,6 +24,10 @@ def create_module_switch(frame_top, selected_module):
     image_test_module = load_and_resize_image("./views/resources/images/test_module_icon.png")
     image_experiment_module = load_and_resize_image("./views/resources/images/experiment_module_icon.png")
 
+    # 创建左侧按钮容器
+    buttons_frame = ttk.Frame(frame_top, style='CustomTop.TFrame')
+    buttons_frame.pack(side=tk.LEFT, fill=tk.Y)
+
     module_buttons = [
         ("Test Module", image_test_module, 'success.Outline.TButton'),  # 使用绿色样式
         ("Experiment Module", image_experiment_module, 'info.Outline.TButton'),  # 使用蓝色样式
@@ -36,7 +40,7 @@ def create_module_switch(frame_top, selected_module):
 
     for i, (text, image, button_style) in enumerate(module_buttons):
         button_widget = ttk.Button(
-            frame_top,
+            buttons_frame,
             text=text,
             image=image,
             style=button_style,  # 根据模块类型设置样式
@@ -48,6 +52,20 @@ def create_module_switch(frame_top, selected_module):
 
         button_widget.image = image
         button_widget.pack(side=tk.LEFT, padx=10)
+
+    # 加载学校图标
+    school_img = Image.open("./views/resources/images/school.png")
+    # 保持宽高比
+    target_height = 60
+    aspect_ratio = school_img.width / school_img.height
+    target_width = int(target_height * aspect_ratio)
+    school_img = school_img.resize((target_width, target_height), Image.Resampling.LANCZOS)  # 保持宽高比
+    school_photo = ImageTk.PhotoImage(school_img)
+    
+    # 创建右侧学校图标标签
+    school_label = ttk.Label(frame_top, image=school_photo, background='#F0F0F0')  # 设置背景色与顶部框架一致
+    school_label.image = school_photo  # 保持引用
+    school_label.pack(side=tk.RIGHT, padx=20)
 
 def on_selected_module_change(var, frame_main):
     # 清空主界面控件和画布
@@ -87,13 +105,17 @@ def create_menu_bar(root):
     # Adding the menu bar to the root window
     root.config(menu=menu_bar)
 
-
-
 def create_main_window():
     """创建主窗口"""
     root = tk.Tk()
     root.title("PlatformEDMO")
     root.geometry("1600x900")
+
+    # 设置应用图标
+    icon = Image.open("./views/resources/images/icon.png")
+    icon = icon.resize((48, 48), Image.Resampling.LANCZOS)  # 使用高质量的LANCZOS重采样
+    icon = ImageTk.PhotoImage(icon)
+    root.iconphoto(True, icon)
 
     # 设置样式
     set_styles()
