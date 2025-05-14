@@ -447,13 +447,12 @@ def create_result_selection(frame):
 
     # 创建文件路径输入框
     file_path_var = tk.StringVar()
-    file_entry = ttk.Entry(file_frame, textvariable=file_path_var, state='readonly')
-    file_entry.pack(side='left', padx=(0, 5))
+    file_entry = ttk.Entry(file_frame, textvariable=file_path_var, state='readonly', width=15)
+    file_entry.pack(side='left', padx=(0, 5), fill='x', expand=True)
 
     # 创建文件选择按钮
     def select_history_file():
         from tkinter import filedialog
-        from views.test_module.test_module_handler import load_selected_result
         
         initial_dir = os.path.join(os.getcwd(), "results")
         file_path = filedialog.askopenfilename(
@@ -464,23 +463,10 @@ def create_result_selection(frame):
         
         if file_path:
             file_path_var.set(file_path)
-            # 加载选中的结果文件
-            result = load_selected_result(file_path)
-            if result:
-                # 从全局变量获取scale和其他控件
-                scale = global_vars['test_module'].get('scale')
-                current_label = global_vars['test_module'].get('current_label')
-                total_label = global_vars['test_module'].get('total_label')
-                
-                # 更新显示
-                update_result_display(scale, result, param_text, metric_value)
-                # 调用 on_scale_change 更新图表
-                if scale and current_label and total_label:
-                    on_scale_change(scale.get(), current_label, total_label)
 
     select_btn = ttk.Button(
         file_frame, 
-        text="选择文件", 
+        text="Select File", 
         command=select_history_file,
         width=10
     )
@@ -513,14 +499,14 @@ def create_result_selection(frame):
     
     metric_combobox.bind('<<ComboboxSelected>>', on_metric_change)
 
-    # 在加载结果时也更新指标显示
+    # 在加载结果时更新指标显示
     def on_load_button_click():
         from views.test_module.test_module_handler import on_load_button_click as handler_on_load_button_click
         handler_on_load_button_click(file_path_var, metric_var, metric_value, param_text)
 
     load_button = ttk.Button(
         row1,
-        text="加载",
+        text="Load",
         style='info.TButton',
         command=on_load_button_click
     )

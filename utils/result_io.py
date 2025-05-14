@@ -2,11 +2,14 @@ import os
 import json
 import traceback
 import numpy as np
+import tkinter as tk
+import tkinter.ttk as ttk
 
 from utils.information_parser import convert_config_to_numeric, find_match_problem, get_problem_config
 from views.common.GlobalVar import global_vars
 from components.Population import Population
 from components.Individual import Individual
+from views.components.progress_dialog import ProgressDialog
 
 
 def _save_json_with_numpy(data, file_path):
@@ -254,4 +257,67 @@ def load_test_module_information_results(file_path):
         print(traceback.format_exc())
         return None
 
+def _get_all_files(path):
+    """递归获取文件夹下的所有.json文件
+    
+    Args:
+        path: 文件或文件夹路径
+        
+    Returns:
+        list: 所有.json文件的路径列表
+    """
+    if os.path.isfile(path):
+        return [path] if path.endswith('.json') else []
+        
+    files = []
+    for item in os.listdir(path):
+        item_path = os.path.join(path, item)
+        if os.path.isfile(item_path) and item_path.endswith('.json'):
+            files.append(item_path)
+        elif os.path.isdir(item_path):
+            files.extend(_get_all_files(item_path))
+    return files
 
+def load_result_from_files(input_paths):
+    """从文件中加载结果
+    
+    Args:
+        input_paths: 输入路径列表，可以是文件或文件夹的混合
+        
+    Yields:
+        每个文件的加载结果
+    """
+    # 展开所有路径，将文件夹转换为文件列表
+    expanded_paths = []
+    for path in input_paths:
+        expanded_paths.extend(_get_all_files(path))
+            
+    # 计算需要加载的文件总数
+    file_count = len(expanded_paths)
+    
+    # 创建进度条对话框
+    progress_dialog = ProgressDialog(title="Loading Results")
+    progress_dialog.set_title("Loading files...")
+    
+    # 加载所有文件
+    for i, file_path in enumerate(expanded_paths):
+        try:
+            # 更新状态
+            progress_dialog.update_status(f"Loading: {os.path.basename(file_path)}")
+            
+            # 加载文件并yield结果
+            result = load_test_module_information_results(file_path)
+            if result:
+                result['file_path'] = file_path  # 添加文件路径信息
+                yield result
+            
+            # 更新进度
+            progress = (i + 1) / file_count * 100
+            progress_dialog.update_progress(progress)
+            
+        except Exception as e:
+            print(f"Error loading file {file_path}: {str(e)}")
+            continue
+            
+    # 关闭进度条对话框
+    progress_dialog.close()

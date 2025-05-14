@@ -14,6 +14,7 @@ from views.experiment_module.experiment_module_handler import (
     update_all_configs, on_remove_button_click, on_start_button_click, on_pause_button_click
 )
 from views.test_module.test_module_handler import load_dynamic_data, load_problem_data, load_search_data
+from views.components.results_form import ResultsForm
 
 def create_dynamic_strategy_section(frame):
     """创建动态策略部分"""
@@ -189,19 +190,19 @@ def create_parameter_settings(frame):
     # 添加 tau 输入
     ttk.Label(input_frame, text="tau:").pack(side="left", padx=5)
     tau_var = tk.StringVar(value="10,20")
-    tau_entry = ttk.Entry(input_frame, textvariable=tau_var, width=8)
+    tau_entry = ttk.Entry(input_frame, textvariable=tau_var, width=5)
     tau_entry.pack(side="left", padx=5)
 
     # 添加 n 输入
     ttk.Label(input_frame, text="n:").pack(side="left", padx=5)
     n_var = tk.StringVar(value="5,10")
-    n_entry = ttk.Entry(input_frame, textvariable=n_var, width=8)
+    n_entry = ttk.Entry(input_frame, textvariable=n_var, width=5)
     n_entry.pack(side="left", padx=5)
 
     # 添加运行次数输入
     ttk.Label(input_frame, text="runs:").pack(side="left", padx=5)
     runs_var = tk.StringVar(value="1")
-    runs_entry = ttk.Entry(input_frame, textvariable=runs_var, width=8)
+    runs_entry = ttk.Entry(input_frame, textvariable=runs_var, width=5)
     runs_entry.pack(side="left", padx=5)
 
     # 添加按钮
@@ -314,6 +315,17 @@ def create_result_display(frame):
     # 创建标题
     label_title = ttk.Label(frame, text="Result Display", font=("Arial", 14, "bold"))
     label_title.pack(pady=10)
+    
+    # 创建主框架
+    main_frame = ttk.Frame(frame)
+    main_frame.pack(fill="both", expand=True, padx=10)
+    
+    # 创建结果表单
+    results_form = ResultsForm(main_frame)
+    results_form.pack(fill="both", expand=True)
+    
+    # 保存到全局变量
+    global_vars['experiment_module']['results_form'] = results_form
 
 def create_experiment_module_view(frame_main):
     # 使用grid布局调整列比例为 1:1:2:1

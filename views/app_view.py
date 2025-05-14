@@ -117,6 +117,9 @@ def create_main_window():
     icon = ImageTk.PhotoImage(icon)
     root.iconphoto(True, icon)
 
+    # 将root存入global_vars
+    global_vars['root'] = root
+
     # 设置样式
     set_styles()
 

@@ -1,0 +1,28 @@
+{
+    "input":[
+        {
+            "name":"input_paths",
+            "type":"file_paths"
+        },
+        {
+            "name":"your_algorithm",
+            "type":"string"
+        },
+        {
+            "name":"n",
+            "type":"string",
+            "default":"5,10"
+        },
+        {
+            "name":"tau",
+            "type":"string",
+            "default":"10,20"
+        }
+    ],
+    "output":[
+        {
+            "name":"output_path",
+            "type":"file_path"
+        }
+    ]
+}
