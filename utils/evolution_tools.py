@@ -181,7 +181,7 @@ def getNonDominate(population: Population):
     # 对种群进行快速非支配排序
     quick_non_dominate_sort(population)
     # 筛选出 rank 等于 1 的个体
-    non_inds = [ind.copy() for ind in population.individuals if ind.rank == 1]
+    non_inds = [ind.result_copy() for ind in population.individuals if ind.rank == 1]
     return Population(individuals=non_inds, xl=population.xl, xu=population.xu)
 
 
