@@ -22,7 +22,7 @@ class Problem:
         self.label = label  # 问题标签
 
         # 初始收敛代数
-        self.initial_convergence = 50 * solution_num  # 初始50代收敛
+        self.initial_convergence = 5 * solution_num  # 初始50代收敛
 
         # 下次是否需要更新
         self.need_change = False

@@ -99,7 +99,7 @@ def create_menu_bar(root):
 
     # Help menu
     help_menu = tk.Menu(menu_bar, tearoff=0)
-    help_menu.add_command(label="About", command=lambda: print("About PlatformDMOEAS"))
+    help_menu.add_command(label="About", command=lambda: print("FlexDMO"))
     menu_bar.add_cascade(label="Help", menu=help_menu)
 
     # Adding the menu bar to the root window
@@ -108,7 +108,7 @@ def create_menu_bar(root):
 def create_main_window():
     """创建主窗口"""
     root = tk.Tk()
-    root.title("PlatformEDMO")
+    root.title("FlexDMO")
     root.geometry("1600x900")
 
     # 设置应用图标

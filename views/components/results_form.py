@@ -28,7 +28,7 @@ class ResultsForm(ttk.Frame):
         select_frame = ttk.Frame(self.main_frame)
         select_frame.pack(fill="x", pady=2)
         
-        label = ttk.Label(select_frame, text="Select Results Folder:")
+        label = ttk.Label(select_frame, text="Select Results Type:")
         label.pack(fill="x", pady=1)
         
         subfolders = [d for d in os.listdir(self.results_dir) 
