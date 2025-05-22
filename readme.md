@@ -36,8 +36,8 @@ FlexDMO/
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/Xieliuliuliu/plateform2DMOEAS.git
-cd plateform2DMOEAS
+git clone https://github.com/Xieliuliuliu/FlexDMO.git
+cd FlexDMO
 
 # 2. 创建虚拟环境（推荐）
 python -m venv venv
@@ -53,7 +53,7 @@ python main.py
 
 📧 联系方式
 ------------------------------------------------------------
-- Issues提交地址: https://github.com/Xieliuliuliu/plateform2DMOEAS/issues
+- Issues提交地址: https://github.com/Xieliuliuliu/FlexDMO/issues
 - Email: xiejinsong@whu.edu.cn & hyhhyh@whu.edu.cn
 
 🌟 感谢
