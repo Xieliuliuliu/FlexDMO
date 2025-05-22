@@ -3,3 +3,6 @@ numpy==1.24.2
 Pillow==11.1.0
 psutil==5.9.4
 ttkbootstrap==1.12.0
+pandas
+scipy
+openpyxl
