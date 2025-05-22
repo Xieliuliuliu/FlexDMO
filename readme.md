@@ -1,4 +1,4 @@
-# plateform2DMOEAS
+# FlexDMO
 
 📚 **简介**
 ------------------------------------------------------------
@@ -13,7 +13,7 @@
 ## 📂 项目结构 (Project Structure)
 
 ```text
-plateform2DMOEAS/
+FlexDMO/
 ├── algorithms/ # 算法实现
 │ ├── response_strategy/ # 响应策略相关算法
 │ ├── search_algorithm/ # 搜索算法实现
