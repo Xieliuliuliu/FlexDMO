@@ -22,6 +22,7 @@ plateform2DMOEAS/
 ├── problems/ # 问题定义
 │ ├── benchmark/ # 基准测试问题
 │ ├── real_problem/ # 实际问题定义
+├── results_output/ # 对实验结果进行结果输出
 ├── utils/ # 工具函数
 ├── views/ # 用户界面相关
 ├── main.py # 主程序入口

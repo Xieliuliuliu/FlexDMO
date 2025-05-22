@@ -1,6 +1,6 @@
 import math
-
 import numpy as np
+
 from algorithms.response_strategy.DIP import DIP_ANN
 from algorithms.response_strategy.ResponseStrategy import ResponseStrategy
 from components.Population import Population
@@ -23,28 +23,26 @@ class DIP(ResponseStrategy):
         else:
             # 获取runtime_populations的倒数二个键(最后两个t)
             t_2, t_1 = list(runtime_populations.keys())[-2:]
+            # print(t_2, t_1)
+
             # 获取最后两个环境(t)的最后一次进化结果作为历史PS
             env_2= runtime_populations[t_2]
             env_1 = runtime_populations[t_1]
             env_2_last_eval = list(env_2.keys())[-1]
-            PS2 = env_2[env_2_last_eval].get_decision_matrix()
+            PS2 = env_2[env_2_last_eval]
             env_1_last_eval = list(env_1.keys())[-1]
-            PS1 = env_1[env_1_last_eval].get_decision_matrix()
-            pop1 = (Population(xl=X_Low, xu=X_Upp, X=PS1))
-            pop1.update_objective_constrain(problem)
-            pop2 = Population(xl=X_Low, xu=X_Upp, X=PS2)
-            pop2.update_objective_constrain(problem)
+            PS1 = env_1[env_1_last_eval]
 
             ann = DIP_ANN.ANN(X_Low, X_Upp, DIM, 5)
-            input, target = get_input_target(pop2, pop1, N)
+            input, target = get_input_target(PS2, PS1, N)
             DIP_ANN.train(ann, input, target, X_Low, X_Upp)
-            population = DIP_init_pop(input, target, PS1, PS2, ann, X_Low, X_Upp, N)
+            population = DIP_init_pop(input, target, PS1.get_decision_matrix(), PS2.get_decision_matrix(), ann, X_Low, X_Upp, N)
             population.update_objective_constrain(problem)
         return population
 
-def get_input_target(pop2, pop1, N):
-    non_pop1 = getNonDominate(pop1)
-    non_pop2 = getNonDominate(pop2)
+def get_input_target(PS2, PS1, N):
+    non_pop1 = getNonDominate(PS1)
+    non_pop2 = getNonDominate(PS2)
     x1 = non_pop1.get_decision_matrix()
     x2 = non_pop2.get_decision_matrix()
     ns = min(len(x1), len(x2))
@@ -87,16 +85,13 @@ def DIP_init_pop(input, target, PS1, PS2, ann, X_Low, X_Upp, N):
     #合并
     new_xp = np.vstack([xp, x_add])
 
-    # 将 new_xp 中的解进行还原
-    new_xp_reversed = DIP_ANN.inverse_data(new_xp, X_Low, X_Upp)
-
     # 边界处理
     for i in range(N):
-        for j in range(xl.shape[1]):
-            if new_xp_reversed[i, j] < X_Low[j]:
-                new_xp_reversed[i, j] = 0.5 * (PS2[i, j] + X_Low[j])
-            if new_xp_reversed[i, j] > X_Upp[j]:
-                new_xp_reversed[i, j] = 0.5 * (PS2[i, j] + X_Upp[j])
+        for j in range(new_xp.shape[1]):
+            if new_xp[i, j] < X_Low[j]:
+                new_xp[i, j] = 0.5 * (PS1[i, j] + X_Low[j])
+            if new_xp[i, j] > X_Upp[j]:
+                new_xp[i, j] = 0.5 * (PS1[i, j] + X_Upp[j])
 
-    population = Population(xl=X_Low, xu=X_Upp, X = new_xp_reversed)
+    population = Population(xl=X_Low, xu=X_Upp, X = new_xp)
     return population
