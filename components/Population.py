@@ -70,8 +70,8 @@ class Population:
     def to_dict(self):
         result = {
             "decision": [],
-            "objective": [],
-            "constrain": []
+            # "objective": [],
+            # "constrain": []
         }
 
         for ind in self.individuals:
