@@ -2,9 +2,9 @@ import copy
 import numpy as np
 
 class Individual:
-    def __init__(self, X):
+    def __init__(self, X, F=None):
         self.X = X
-        self.F = None
+        self.F = F
         self.G = None
         self.feasible = True
         self.rank = None           # NSGA-II等排序等级

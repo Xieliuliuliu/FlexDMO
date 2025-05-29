@@ -5,18 +5,22 @@ from components.Individual import Individual
 import copy
 
 class Population:
-    def __init__(self, individuals=None, xl=None, xu=None, n_init=0, X=None):
+    def __init__(self, individuals=None, xl=None, xu=None, n_init=0, X=None, F=None):
         """
-        Population 支持三种初始化方式：
+        Population 支持四种初始化方式：
         1. individuals：传入已构造好的个体列表
         2. xl/xu + n_init：随机生成 n_init 个个体
         3. X：直接从一个决策矩阵初始化（每行一个个体）
+        4. X + Y：从决策矩阵和目标矩阵初始化
         """
         if individuals:
             self.individuals = individuals
 
         elif X is not None:
-            self.individuals = [Individual(x) for x in np.atleast_2d(X)]
+            if F is not None:
+                self.individuals = [Individual(x, y) for x, y in zip(np.atleast_2d(X), np.atleast_2d(F))]
+            else:
+                self.individuals = [Individual(x) for x in np.atleast_2d(X)]
 
         elif xl is not None and xu is not None and n_init > 0:
             self.individuals = [Individual(np.random.uniform(low=xl, high=xu)) for _ in range(n_init)]
