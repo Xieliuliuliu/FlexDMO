@@ -1,8 +1,7 @@
+# FlexDMO
 <div align="center">
   <img src="views/resources/images/icon.png" alt="FlexDMO Logo" width="200" style="background: linear-gradient(135deg, #ffe066 10%, #41d1ff 100%);; padding: 20px; filter: drop-shadow(0 0 30px rgba(66,162,159,0.5));"/>
 </div>
-
-# FlexDMO
 
 📚 **简介**
 ------------------------------------------------------------
