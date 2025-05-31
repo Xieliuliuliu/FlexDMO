@@ -22,7 +22,7 @@ criterion = nn.MSELoss().to(select_device())
 
 # 自定义神经网络
 class ANN(nn.Module):
-    def __init__(self, lower_bound, upper_bound, dim, hidden):
+    def __init__(self, dim, hidden):
         super(ANN, self).__init__()
 
         # 确定超参数的值

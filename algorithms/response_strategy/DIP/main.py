@@ -23,17 +23,16 @@ class DIP(ResponseStrategy):
         else:
             # 获取runtime_populations的倒数二个键(最后两个t)
             t_2, t_1 = list(runtime_populations.keys())[-2:]
-            # print(t_2, t_1)
 
             # 获取最后两个环境(t)的最后一次进化结果作为历史PS
             env_2= runtime_populations[t_2]
-            env_1 = runtime_populations[t_1]
             env_2_last_eval = list(env_2.keys())[-1]
             PS2 = env_2[env_2_last_eval]
+            env_1 = runtime_populations[t_1]
             env_1_last_eval = list(env_1.keys())[-1]
             PS1 = env_1[env_1_last_eval]
 
-            ann = DIP_ANN.ANN(X_Low, X_Upp, DIM, 5)
+            ann = DIP_ANN.ANN(DIM, 5)
             input, target = get_input_target(PS2, PS1, N)
             DIP_ANN.train(ann, input, target, X_Low, X_Upp)
             population = DIP_init_pop(input, target, PS1.get_decision_matrix(), PS2.get_decision_matrix(), ann, X_Low, X_Upp, N)
