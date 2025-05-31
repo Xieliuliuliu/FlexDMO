@@ -242,9 +242,13 @@ def create_result_display(frame):
     # 创建可折叠的Listbox
     result_listbox = CollapsibleListbox(top_frame, "Result Indicator", style='primary')
     result_listbox.pack(side="left", fill='x', expand=True)
-    result_listbox.insert(tk.END, "Pareto Front")
-    result_listbox.insert(tk.END, "Pareto Set")
-    result_listbox.insert(tk.END, "IGD")
+    # 从config.json中读取结果指标
+    config_path = os.path.join("plots", "test_module", "config.json")
+    with open(config_path, "r") as f:
+        import json
+        config = json.load(f)
+        for indicator in config["result_indicator"]:
+            result_listbox.insert(tk.END, indicator)
     
     # 添加保存结果的单选框
     save_var = tk.BooleanVar(value=False)
