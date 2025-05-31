@@ -1,3 +1,18 @@
+<style>
+:root {
+  /* 主标题颜色 */
+  --vp-home-hero-name-color: rgb(66,162,159);
+
+  /* 图标背景黄蓝渐变+发光 */
+  --vp-home-hero-image-background-image: linear-gradient(135deg, #ffe066 10%, #41d1ff 100%);
+  --vp-home-hero-image-filter: blur(120px);
+}
+</style>
+
+<div align="center">
+  <img src="views/resources/images/icon.png" alt="FlexDMO Logo" width="200"/>
+</div>
+
 # FlexDMO
 
 📚 **简介**
