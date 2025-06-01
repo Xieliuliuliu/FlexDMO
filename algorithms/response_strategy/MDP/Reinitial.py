@@ -123,7 +123,7 @@ def get_e(sigma, mu=0):
     # 使用Box-Muller变换生成标准正态分布的随机数
     z = np.sqrt(-2 * np.log(u)) * np.cos(2 * np.pi * v)
     # 转换为均值为mu、标准差为sigma的正态分布随机数
-    e = sigma * z + mu
+    e = 0.1 * sigma * z + mu
     return e
 
 def generate(X1_non, delta_c, C, xl, xu):
@@ -158,7 +158,9 @@ def generate(X1_non, delta_c, C, xl, xu):
 def get_pop(PS1, C, C_prev, xl, xu):
     X1 = PS1.get_decision_matrix()
     PS_non = getNonDominate(PS1)
-    X_non = PS_non.get_decision_matrix()
+    # X_non = PS_non.get_decision_matrix()
+    X_non = PS1.get_decision_matrix()
+
     add = X1.shape[0] - X_non.shape[0]
     population_add = Population(xl = xl, xu = xu, n_init=add)
 
