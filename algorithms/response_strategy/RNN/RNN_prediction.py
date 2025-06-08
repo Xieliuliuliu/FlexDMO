@@ -73,7 +73,7 @@ def train(model: RNN, input, target, Ht1, lr=0.0001):
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
     #训练epoch设置为50
-    epoch_num = 5 # 50速度太慢，且目前发现RNN预测效果差，待check
+    epoch_num = 50
     H_temp = None
     L = []
     for epoch in range(epoch_num):

@@ -47,6 +47,12 @@ def quick_non_dominate_sort(population):
                     next_front.append(dominated)
         current_rank += 1
         front = next_front
+    # 删除临时属性
+    for individual in population.individuals:
+        if hasattr(individual, 'dominate'):
+            delattr(individual, 'dominate')
+        if hasattr(individual, 'bedominated'):
+            delattr(individual, 'bedominated')
 
 
 def crowd_selection(population, N):
@@ -170,19 +176,26 @@ def isDominated(A, B):
     return 2  # A和B互不支配
 
 
-def getNonDominate(population: Population):
+def getNonDominate(population: Population, type = 'population'):
     """
     选取非支配解集
     Args:
         population: 待选择的种群
     Returns:
-        种群的非支配解集矩阵
+        种群的非支配种群/解集矩阵
     """
     # 对种群进行快速非支配排序
     quick_non_dominate_sort(population)
-    # 筛选出 rank 等于 1 的个体
-    non_inds = [ind.result_copy() for ind in population.individuals if ind.rank == 1]
-    return Population(individuals=non_inds, xl=population.xl, xu=population.xu)
+    if type == 'population':
+        # 筛选出 rank 等于 1 的个体
+        non_inds = [ind.copy() for ind in population.individuals if ind.rank == 1]
+        return Population(individuals=non_inds, xl=population.xl, xu=population.xu)
+    elif type == 'decision':
+        # 筛选出 rank 等于 1 的个体的决策变量
+        non_dec = [ind.X for ind in population.individuals if ind.rank == 1]
+        return non_dec
+    else:
+        return None
 
 
 def detection(pop: Population, problem: Problem, number_detector):
