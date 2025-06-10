@@ -154,7 +154,7 @@ class MDA(ResponseStrategy):
             return None
 
         # 2. 合并候选Vt并快速非支配排序
-        m = Ht_1.shape[0]
+        m = Ht_1.shape[1]
         selected_individuals = []
         source_times = []
 

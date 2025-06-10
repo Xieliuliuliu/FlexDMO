@@ -79,7 +79,6 @@ def compute_kernel_matrix(P, kernel_type='rbf', gamma=1.0):
     :param gamma: 核函数的参数
     :return: 形状为 [N, N] 的核矩阵
     """
-    N = P.shape[1]  # 数据点的数量
     if kernel_type == 'rbf':
         pairwise_differences = P[:, np.newaxis, :] - P[:, :, np.newaxis]
         squared_distances = np.sum(pairwise_differences ** 2, axis=0)
