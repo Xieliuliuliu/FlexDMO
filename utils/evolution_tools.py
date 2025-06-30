@@ -1,142 +1,129 @@
 import random
 import numpy as np
+from typing import List
 from components.Population import Population
 from problems.Problem import Problem
 
 
+def fast_non_dominated_sort(objectives: np.ndarray) -> List[np.ndarray]:
+    """
+    完全向量化的快速非支配排序（无显式循环），作为工具使用，便于之后的crowd_selection和quick_non_dominate_sort
+    :param objectives: 目标函数矩阵，形状 (n, m), n为个体数, m为目标数
+    :return: 前沿列表，每个元素是前沿个体的索引数组
+    """
+    n = objectives.shape[0]
+
+    # 1. 计算支配关系矩阵 (n, n)
+    # 使用广播比较所有个体对 (i,j): [n,1,m] <= [1,n,m] → [n,n,m]
+    less_or_equal = np.all(objectives[:, None] <= objectives[None, :], axis=2)
+    strictly_less = np.any(objectives[:, None] < objectives[None, :], axis=2)
+    domination = less_or_equal & strictly_less
+
+    # 排除自支配 (i,i)
+    np.fill_diagonal(domination, False)
+
+    # 2. 计算被支配次数 (axis=0: 列求和)
+    dominated_counts = np.sum(domination, axis=0)
+
+    # 3. 分配前沿 (完全向量化实现)
+    fronts = []
+    remaining_mask = np.ones(n, dtype=bool) # 未分配个体掩码
+
+    while np.any(remaining_mask):
+        # 当前前沿：remaining中未被支配的个体
+        current_front = np.where(remaining_mask & (dominated_counts == 0))[0]
+        fronts.append(current_front)
+
+        # 更新remaining_mask
+        remaining_mask[current_front] = False
+
+        # 向量化更新被支配次数：当前前沿支配的所有remaining个体计数减1
+        if np.any(remaining_mask):
+            # 获取remaining个体的索引
+            remaining_indices = np.where(remaining_mask)[0]
+
+            # 计算被当前前沿支配的remaining个体
+            dominated_by_front = np.sum(domination[current_front][:, remaining_indices], axis=0)
+            dominated_counts[remaining_indices] -= dominated_by_front
+
+    return fronts
+
+def crowding_distance(objectives: np.ndarray, front_indices: np.ndarray) -> np.ndarray:
+    """
+    计算指定前沿个体的拥挤距离（向量化实现），作为工具使用，便于之后的crowd_selection和quick_non_dominate_sort
+    :param objectives: 所有个体的目标函数矩阵，形状为 (n, m)
+    :param front_indices: 当前前沿的个体索引数组
+    :return: 每个前沿个体的拥挤距离数组，形状为 (len(front_indices),)
+    """
+    if len(front_indices) <= 2:
+        return np.full(len(front_indices), np.inf)
+
+    front = objectives[front_indices]
+    m = front.shape[1] # 目标数
+    dist = np.zeros(len(front))
+
+    # 对每个目标归一化后计算距离
+    norm = (front - front.min(axis=0)) / (front.max(axis=0) - front.min(axis=0) + 1e-10)
+    # norm = front
+
+    for i in range(m):
+        order = np.argsort(norm[:, i])
+        dist[order[[0, -1]]] = np.inf # 边界个体距离设为无穷
+        dist[order[1:-1]] += norm[order[2:], i] - norm[order[:-2], i] # 内部个体累加距离
+
+    return dist
+
+
 def quick_non_dominate_sort(population):
     """快速非支配排序
-    
-    Args:
-        population: 待排序的种群
+    population: 待排序的种群
     """
     if not population.individuals:
             return
-            
-    # 初始化支配关系
-    for individual in population.individuals:
-        individual.dominate = []
-        individual.bedominated = 0
-        
-    # 计算支配关系
-    for i, ind1 in enumerate(population.individuals):
-        for j, ind2 in enumerate(population.individuals):
-            if i != j:
-                domination = isDominated(ind1, ind2)
-                if domination == 1:  # ind1支配ind2
-                    ind1.dominate.append(ind2)
-                elif domination == 0:  # ind1被ind2支配
-                    ind1.bedominated += 1
-                    
-    # 生成非支配层
-    front = []
-    for individual in population.individuals:
-        if individual.bedominated == 0:
-            individual.rank = 1
-            front.append(individual)
-            
-    # 迭代生成后续的非支配层
-    current_rank = 1
-    while front:
-        next_front = []
-        for non_dominated in front:
-            for dominated in non_dominated.dominate:
-                dominated.bedominated -= 1
-                if dominated.bedominated == 0:
-                    dominated.rank = current_rank + 1
-                    next_front.append(dominated)
-        current_rank += 1
-        front = next_front
-    # 删除临时属性
-    for individual in population.individuals:
-        if hasattr(individual, 'dominate'):
-            delattr(individual, 'dominate')
-        if hasattr(individual, 'bedominated'):
-            delattr(individual, 'bedominated')
+
+    # 提取目标函数矩阵
+    objectives = population.get_objective_matrix()
+    # 调用 fast_non_dominated_sort 获取前沿列表
+    fronts_indices = fast_non_dominated_sort(objectives)
+
+    # 为每个个体分配排名
+    for rank, front_indices in enumerate(fronts_indices, start=1):
+        for index in front_indices:
+            population.individuals[index].rank = rank
 
 
 def crowd_selection(population, N):
     """拥挤度选择
-    
-    Args:
-        population: 待选择的种群
-        N: 需要选择的个体数量
-        
-    Returns:
-        选择后的新种群
+    population: 待选择的种群
+    N: 需要选择的个体数量
+    Returns:选择后的新种群
     """
     if not population.individuals:
         return Population(xl=population.xl, xu=population.xu)
-        
+
+    # 提取目标函数矩阵
+    objectives = population.get_objective_matrix()
+    # 执行快速非支配排序
+    fronts = fast_non_dominated_sort(objectives)
+
     target_pop = []
-    obj_dim = population.get_objective_matrix().shape[1]
     current_count = 0
-    current_rank = 1
-    
-    while current_count < N:
-        # 获取当前秩的所有个体
-        current_rank_pop = [ind for ind in population.individuals if ind.rank == current_rank]
-        
-        if not current_rank_pop:
-            current_rank += 1
-            continue
-            
-        need = N - current_count
-        if len(current_rank_pop) <= need:
-            # 如果当前秩的个体数量小于等于需要的数量，全部选择
-            for individual in current_rank_pop:
-                # 清除临时属性
-                for attr in ['dominate', 'bedominated']:
-                    if hasattr(individual, attr):
-                        delattr(individual, attr)
-                target_pop.append(individual.copy())
-                current_count += 1
-            current_rank += 1
+
+    for front_indices in fronts:
+        front = [population.individuals[i] for i in front_indices]
+
+        if current_count + len(front) <= N:
+            # 如果当前前沿的个体数量小于等于需要的数量，全部选择
+            target_pop.extend(front)
+            current_count += len(front)
         else:
-            # 如果当前秩的个体数量大于需要的数量，使用拥挤度选择
-            for individual in current_rank_pop:
-                individual.crowding_dist = 0
-                
-            # 对每个目标维度计算拥挤度
-            for i in range(obj_dim):
-                # 按当前目标值排序
-                current_rank_pop.sort(key=lambda ind: ind.F[i])
-                
-                # 设置边界点的拥挤度为无穷大
-                current_rank_pop[0].crowding_dist = float('inf')
-                current_rank_pop[-1].crowding_dist = float('inf')
-                
-                # 计算中间点的拥挤度
-                f_max = current_rank_pop[-1].F[i]
-                f_min = current_rank_pop[0].F[i]
-                range_diff = f_max - f_min
-                
-                if range_diff > 0:
-                    for j in range(1, len(current_rank_pop) - 1):
-                        current_rank_pop[j].crowding_dist += (
-                            current_rank_pop[j + 1].F[i] - 
-                            current_rank_pop[j - 1].F[i]
-                        ) / range_diff
-                else:
-                    # 当目标值相同时，使用均匀分布
-                    for j in range(1, len(current_rank_pop) - 1):
-                        current_rank_pop[j].crowding_dist += 1.0
-                        
-            # 按拥挤度降序排序
-            current_rank_pop.sort(key=lambda ind: ind.crowding_dist, reverse=True)
-            
-            # 选择需要的个体
-            for i in range(need):
-                individual = current_rank_pop[i]
-                # 清除临时属性
-                for attr in ['dominate', 'bedominated']:
-                    if hasattr(individual, attr):
-                        delattr(individual, attr)
-                target_pop.append(individual.copy())
-                current_count += 1
-                
-            return Population(individuals=target_pop, xl=population.xl, xu=population.xu)
-            
+            # 如果当前前沿的个体数量大于需要的数量，使用拥挤度选择
+            objectives = population.get_objective_matrix()
+            dist = crowding_distance(objectives, front_indices)
+            sorted_indices = front_indices[np.argsort(-dist)]
+            target_pop.extend([population.individuals[i] for i in sorted_indices[:N - current_count]])
+            break
+
     return Population(individuals=target_pop, xl=population.xl, xu=population.xu)
 
 
