@@ -45,8 +45,8 @@ class NSGA2(Algorithm):
         beta = np.zeros((parent_1.shape[0], D))
         rand = np.random.random((parent_1.shape[0], D))
 
-        beta[rand > 0.5] = np.power(2 * rand[rand > 0.5], 1 / (disC + 1))
-        beta[rand <= 0.5] = np.power(2 * (1 - rand[rand <= 0.5]), -1 / (disC + 1))
+        beta[rand < 0.5] = np.power(2 * rand[rand < 0.5], 1 / (disC + 1))
+        beta[rand >= 0.5] = np.power(2 * (1 - rand[rand >= 0.5]), -1 / (disC + 1))
 
         # 将beta随机取正负
         beta = np.multiply(beta, (-1) ** np.random.randint(0, 2, (parent_1.shape[0], D)))
