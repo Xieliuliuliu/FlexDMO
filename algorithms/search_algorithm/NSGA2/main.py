@@ -57,7 +57,7 @@ class NSGA2(Algorithm):
         beta[np.repeat(np.random.random((parent_1.shape[0], 1)) > proC, D, 1)] = 1
         # 杂交
         return np.vstack(((parent_1 + parent_2) / 2 + np.multiply(beta, parent_1 - parent_2) / 2,
-                          (parent_1 + parent_2) / 2 - np.multiply(beta, parent_2 - parent_1) / 2))
+                          (parent_1 + parent_2) / 2 + np.multiply(beta, parent_2 - parent_1) / 2))
 
     def _polynomial_mutation(self, offspring, proM, disM, problem):
         N = problem.solution_num
