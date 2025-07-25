@@ -83,43 +83,50 @@ def get_all_search_algorithm():
 
     return search_algorithms
 
+import os
+import sys
+import json
+
 def get_all_problem():
-    # 获取当前脚本所在目录路径，也就是main.py所在的目录
+    # 获取当前脚本所在目录路径
     root_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 
-    # 构建目标目录路径
-    target_dir = os.path.join(root_dir, "problems", "benchmark")
+    # 构建两个目标目录路径
+    problem_dirs = [
+        os.path.join(root_dir, "problems", "benchmark"),
+        os.path.join(root_dir, "problems", "real_problem")
+    ]
 
     # 存储所有问题信息的列表
     problems = []
 
-    # 遍历该目录下的所有文件夹
-    for folder_name in os.listdir(target_dir):
-        folder_path = os.path.join(target_dir, folder_name)
+    # 遍历两个目录
+    for target_dir in problem_dirs:
+        if not os.path.exists(target_dir):
+            continue  # 如果目录不存在则跳过
 
-        # 确保这是一个文件夹
-        if os.path.isdir(folder_path):
-            config_path = os.path.join(folder_path, "info.json")
+        for folder_name in os.listdir(target_dir):
+            folder_path = os.path.join(target_dir, folder_name)
 
-            # 确保config文件存在并且是文件
-            if os.path.isfile(config_path):
-                try:
-                    # 假设config文件是JSON格式，读取文件内容
-                    with open(config_path, 'r') as config_file:
-                        config_data = json.load(config_file)
+            if os.path.isdir(folder_path):
+                config_path = os.path.join(folder_path, "info.json")
 
-                        # 获取name和year信息
-                        name = config_data.get("name")
+                if os.path.isfile(config_path):
+                    try:
+                        with open(config_path, 'r') as config_file:
+                            config_data = json.load(config_file)
 
-                        # 将信息添加到列表
-                        problems.append({
-                            "folder_name": folder_path,
-                            "name": name,
-                        })
-                except Exception as e:
-                    print(f"Error reading config for {folder_name}: {e}")
+                            name = config_data.get("name")
+
+                            problems.append({
+                                "folder_name": folder_path,
+                                "name": name,
+                            })
+                    except Exception as e:
+                        print(f"Error reading config for {folder_name}: {e}")
 
     return problems
+
 
 def find_match_response_strategy(dynamic_response_name):
     # 获取所有动态响应策略
