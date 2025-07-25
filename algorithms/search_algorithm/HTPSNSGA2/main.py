@@ -1,9 +1,11 @@
+import random
+
 import matplotlib.pyplot as plt
 import numpy as np
 
 from algorithms.search_algorithm.Algorithm import Algorithm
 from components.Population import Population
-from utils.evolution_tools import quick_non_dominate_sort, crowd_selection, detection
+from utils.evolution_tools import quick_non_dominate_sort, crowd_selection
 
 
 class HTPSNSGA2(Algorithm):
@@ -17,18 +19,17 @@ class HTPSNSGA2(Algorithm):
     def optimize(self, problem, response_strategy):
         # 初始化种群
         pop = Population(xl=problem.xl, xu=problem.xu, n_init=problem.solution_num)
-        # pop.update_X(problem.repair_X(pop.get_decision_matrix()))
         pop.update_objective_constrain(problem)
         self.add_pen_to_f(pop,problem)
         while not problem.is_ended() and self.control_process():
-            # # 检测环境变化
-            # if detection(pop, problem, int(0.1 * problem.solution_num)) == 1:
-            #     pop = response_strategy.response(pop, problem, self)
-            #     self.collect_information(pop, problem, response_strategy)  # 收集运行信息
-            #     continue
+            # 检测环境变化
+            if self.detection(pop, problem, int(0.1 * problem.solution_num)) == 1:
+                pop = response_strategy.response(pop, problem, self)
+                self.add_pen_to_f(pop, problem)
+                self.collect_information(pop, problem, response_strategy)  # 收集运行信息
+                continue
             # 生成子代
             offspring = self._variation(pop, problem)
-            # pop.update_X(problem.repair_X(pop.get_decision_matrix()))
             offspring.update_objective_constrain(problem)
             self.add_pen_to_f(offspring, problem)
             # 合并父代和子代
@@ -109,6 +110,40 @@ class HTPSNSGA2(Algorithm):
         offspring = np.where(offspring < problem.xl, problem.xl, offspring)
         offspring = np.where(offspring > problem.xu, problem.xu, offspring)
         return offspring
+
+    def detection(self, pop, problem, number_detector):
+        """检测环境变化
+
+        Args:
+            pop: 当前种群
+            problem: 问题实例
+            number_detector: 检测个体数量
+
+        Returns:
+            1: 检测到环境变化
+            0: 未检测到环境变化
+        """
+        if not pop.individuals:
+            return 0
+
+        seq = range(pop.n)
+        detector = random.sample(seq, min(number_detector, pop.n))
+
+        for i in detector:
+            temp = pop.individuals[i]
+            f, g = problem.evaluate(temp.X.reshape(1, -1), False)
+            # 罚值计算方式（常用的是等式绝对值 + max(0, 不等式残差)）
+            violation = np.sum(np.abs(g[0][:problem.n_con]))
+
+            # 加权惩罚（可调参数，例如罚因子 1e6）
+            penalty_factor = 1e2
+            penalized_f = f + penalty_factor * violation
+            # 检查目标值是否发生变化
+            if not np.allclose(penalized_f[0], temp.F):
+                print("环境发生变化")
+                return 1
+
+        return 0
 
     def _environmental_selection(self, population, problem):
         # 非支配排序 + 拥挤度选择
