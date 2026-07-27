@@ -13,14 +13,18 @@ class Population:
         3. X：直接从一个决策矩阵初始化（每行一个个体）
         4. X + Y：从决策矩阵和目标矩阵初始化
         """
-        if individuals:
+        if individuals is not None:
             self.individuals = individuals
 
         elif X is not None:
+            X = np.atleast_2d(np.asarray(X))
             if F is not None:
-                self.individuals = [Individual(x, y) for x, y in zip(np.atleast_2d(X), np.atleast_2d(F))]
+                F = np.atleast_2d(np.asarray(F))
+                if len(X) != len(F):
+                    raise ValueError("X 和 F 的行数必须一致")
+                self.individuals = [Individual(x, y) for x, y in zip(X, F)]
             else:
-                self.individuals = [Individual(x) for x in np.atleast_2d(X)]
+                self.individuals = [Individual(x) for x in X]
 
         elif xl is not None and xu is not None and n_init > 0:
             self.individuals = [Individual(np.random.uniform(low=xl, high=xu)) for _ in range(n_init)]
@@ -37,7 +41,9 @@ class Population:
         return np.array([ind.X for ind in self.individuals])
 
     def get_objective_matrix(self):
-        return np.array([ind.F for ind in self.individuals if ind.F is not None])
+        if any(ind.F is None for ind in self.individuals):
+            raise ValueError("种群中存在尚未计算目标值的个体")
+        return np.array([ind.F for ind in self.individuals])
 
     def get_constrain_matrix(self):
         return np.array([ind.G for ind in self.individuals if ind.G is not None])
@@ -55,6 +61,8 @@ class Population:
         return copy.deepcopy(self)
 
     def update_objective_constrain(self,problem:problems.Problem):
+        if not self.individuals:
+            return
         F, G = problem.evaluate(self.get_decision_matrix())
         for i, ind in enumerate(self.individuals):
             ind.F = F[i]

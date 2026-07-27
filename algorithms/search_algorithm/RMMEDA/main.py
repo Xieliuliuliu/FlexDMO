@@ -35,16 +35,17 @@ class RMMEDA(Algorithm):
         PopDec = np.array([ind.X for ind in pop.individuals])
         N, D = PopDec.shape
         M = problem.n_obj
+        cluster_count = min(max(1, int(self.K)), max(1, N // 2))
         
         # 建模
-        Model, cn = LocalPCA(PopDec, M, self.K)
+        Model, cn = LocalPCA(PopDec, M, cluster_count)
         
         # 生成子代
         OffspringDec = np.zeros((N, D))
         tn = 0
         ast = 0
         
-        for k in range(self.K):
+        for k in range(cluster_count):
             # 生成子代
             LInd = np.ones([int(cn[0,k]), M-1])
             for i in range(M-1):
@@ -55,7 +56,7 @@ class RMMEDA(Algorithm):
                     lower = Model[k]['a'] - 0.25 * (Model[k]['b'] - Model[k]['a'])
                     upper = Model[k]['b'] + 0.25 * (Model[k]['b'] - Model[k]['a'])
                     trial = (LInd[i,:] - np.random.random([1,M-1]))/cn[0,k] * (upper - lower) + lower
-                    sigma = np.sum(np.abs(Model[k]['eValue'][M-1:D])) / (D - M + 1)
+                    sigma = np.sum(np.abs(Model[k]['eValue'][M-1:D])) / max(1, D - M + 1)
                     ast = sigma
                     OffspringDec[int(i + tn), :] = Model[k]['mean'] + np.dot(Model[k]['eVector'][:,:M-1], np.transpose(trial)).transpose() + np.random.randn(D) * np.sqrt(sigma)
                 else:

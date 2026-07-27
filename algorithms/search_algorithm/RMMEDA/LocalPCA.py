@@ -51,10 +51,11 @@ def LocalPCA(PopDec, M, K):
                 Model[k]['mean'] = np.mean(cx, 0)
                 mean_matrix = np.tile(Model[k]['mean'], [count, 1])
                 cy = cx - mean_matrix
-                eva, eve = np.linalg.eig(np.cov(np.transpose(cy)))
-                rank = np.argsort(-eva)
-                eva = -np.sort(-eva)
-                eve = eve[:,rank]
+                # 协方差矩阵是实对称矩阵，eigh 可避免 eig 带来的复数舍入误差。
+                eva, eve = np.linalg.eigh(np.cov(np.transpose(cy)))
+                rank = np.argsort(eva)[::-1]
+                eva = np.clip(eva[rank], 0.0, None)
+                eve = eve[:, rank]
                 Model[k]['eVector'] = eve
                 Model[k]['eValue'] = eva
                 Model[k]['PI'] = np.dot(eve[:,(M-1):D], np.transpose(eve[:,(M-1):D]))
@@ -91,15 +92,18 @@ def LocalPCA(PopDec, M, K):
         volume[0,i] = np.prod(Model[i]['b'] - Model[i]['a'])
     volume = (volume + 0.0000001) * exist
     # Calculate the cumulative probability of each cluster
-    probability = volume / np.sum(volume)
-    cn = 2*np.ones([1,K]) + np.floor((N - 2*K)*probability)
-    while(np.sum(cn) < N):
-        temp = np.sort(cn)
-        for k in range(K):
-            if(temp[0,k] > 2):
-                num = temp[0,k]
-                break
-        id = np.where(cn == num)[1][0]
-        cn[0,id] = cn[0,id] + 1
+    volume_sum = np.sum(volume)
+    if volume_sum > 0:
+        probability = volume / volume_sum
+    else:
+        probability = np.full((1, K), 1.0 / K)
 
-    return Model, cn 
+    raw_extra = (N - 2 * K) * probability[0]
+    extra = np.floor(raw_extra).astype(int)
+    remainder = N - (2 * K + int(np.sum(extra)))
+    if remainder > 0:
+        fractional_order = np.argsort(-(raw_extra - extra))
+        extra[fractional_order[:remainder]] += 1
+    cn = (2 + extra).reshape(1, K)
+
+    return Model, cn

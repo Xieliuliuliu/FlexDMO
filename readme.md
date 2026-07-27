@@ -3,6 +3,8 @@
   <img src="views/resources/images/icon.png" alt="FlexDMO Logo" width="200"/>
 </div>
 
+[![Tests](https://github.com/Xieliuliuliu/FlexDMO/actions/workflows/tests.yml/badge.svg)](https://github.com/Xieliuliuliu/FlexDMO/actions/workflows/tests.yml)
+
 📚 **简介**
 ------------------------------------------------------------
 
@@ -58,6 +60,30 @@ pip install -r requirements.txt
 
 # 4. 开始运行
 python main.py
+```
+
+建议使用 Python 3.10。图形界面依赖 Tk；Linux 用户如果缺少 Tk，请先通过系统包管理器安装对应的 `python3-tk` 软件包。
+
+🧪 **运行测试**
+------------------------------------------------------------
+
+项目使用 Python 标准库 `unittest`，无需额外安装测试框架：
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+测试覆盖组件发现、非支配排序、拥挤度选择、性能指标、动态问题状态重置、奇数种群规模、RMMEDA 的 PCA 建模和结果文件命名。推送或提交 Pull Request 时，GitHub Actions 也会自动执行这些测试。
+
+运行无界面测试或服务器实验时，可以设置 Matplotlib 后端：
+
+```bash
+# Linux/macOS
+MPLBACKEND=Agg python -m unittest discover -s tests -v
+
+# PowerShell
+$env:MPLBACKEND = "Agg"
+python -m unittest discover -s tests -v
 ```
 
 📧 联系方式

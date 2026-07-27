@@ -1,11 +1,7 @@
-import os
 from multiprocessing import Process, Pipe, Manager
 import threading
 import traceback
 from utils.run_executor import load_main_class_from_folder, convert_config_to_numeric
-import time
-import json
-import numpy as np
 from views.common.GlobalVar import global_vars
 from utils.result_io import save_experiment_module_information_results
 
@@ -112,8 +108,14 @@ def run_experiment_process(save_path, problem, dynamic, search, tau, n, run, pro
         print("run experiment process end")
     except Exception as e:
         print(f"[Error in experiment process]: {e}")
-        # 打印错误信息
         print(traceback.format_exc())
+        try:
+            child_conn.send({"status": "error", "error": str(e)})
+        except (BrokenPipeError, EOFError, OSError):
+            pass
+        raise
+    finally:
+        child_conn.close()
 
 def listen_experiment_pipe(parent_conn, process, task_card):
     """监听子进程通信，更新任务状态和进度"""
@@ -129,8 +131,8 @@ def listen_experiment_pipe(parent_conn, process, task_card):
                             task_card.update_progress(data['progress'])
                 except (EOFError, BrokenPipeError):
                     pass
-                # 更新任务状态为已完成
-                task_card.update_status('completed')
+                final_status = 'completed' if process.exitcode == 0 else 'error'
+                task_card.update_status(final_status)
                 # 调用完成回调函数
                 if hasattr(task_card, 'on_complete') and task_card.on_complete:
                     task_card.on_complete(task_card)
@@ -138,7 +140,7 @@ def listen_experiment_pipe(parent_conn, process, task_card):
                 
             # 检查是否有新数据
             try:
-                if parent_conn.poll():
+                if parent_conn.poll(0.1):
                     data = parent_conn.recv()
                     if isinstance(data, dict):
                         if 'progress' in data:
@@ -174,5 +176,5 @@ def listen_experiment_pipe(parent_conn, process, task_card):
         try:
             parent_conn.close()
             task_card.manager.shutdown()
-        except:
+        except Exception:
             pass

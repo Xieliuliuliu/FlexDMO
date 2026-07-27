@@ -1,11 +1,8 @@
 import importlib
 import os
-import time
 import traceback
 
-from matplotlib.gridspec import GridSpec
-
-from plots.test_module.draw_population import draw_IGD_curve, draw_PF, draw_PS, draw_selected_chart
+from plots.test_module.draw_population import draw_selected_chart
 from utils.information_parser import convert_config_to_numeric
 from utils.result_io import save_test_module_information_results
 from views.common.GlobalVar import global_vars
@@ -86,8 +83,9 @@ def run_in_test_mode_process(response_strategy, search_algorithm, problem_name, 
         problem_instance = ProblemClass(**convert_config_to_numeric(runtime_config['selected_problem']))
 
         search_instance.optimize(problem_instance, response_instance)
-    except Exception as e:
-        print(f"[Error in subprocess]: {traceback.print_exc()}")
+    except Exception:
+        print("[Error in subprocess]:")
+        traceback.print_exc()
 
 
 def save_state_in_test_mode(state, p, parent_conn,child_conn):
@@ -157,7 +155,7 @@ def listen_pipe(parent_conn, process):
                 print("[主进程] 子进程已结束，Pipe监听线程退出")
                 break
             # 安全地 poll Pipe
-            if parent_conn.poll():
+            if parent_conn.poll(0.1):
                 try:
                     information = parent_conn.recv()
                     # print(f"[主进程] 收到子进程信息")
@@ -178,7 +176,7 @@ def listen_pipe(parent_conn, process):
                 print("正在保存运行数据")
                 save_test_module_information_results()
         except Exception as e:
-            print(f"[主进程] 保存数据异常")
+            print(f"[主进程] 保存数据异常: {e}")
         if scale:
             scale.configure(state='normal')
         parent_conn.close()

@@ -1,9 +1,8 @@
 import os
 import json
+import re
 import traceback
 import numpy as np
-import tkinter as tk
-import tkinter.ttk as ttk
 
 from utils.information_parser import convert_config_to_numeric, find_match_problem, get_problem_config
 from views.common.GlobalVar import global_vars
@@ -65,10 +64,13 @@ def _get_next_filename(save_path, base_filename):
     Returns:
         str: 完整的文件名
     """
-    # 获取当前已有文件数量
-    existing_files = [f for f in os.listdir(save_path)
-                      if f.startswith(base_filename) and f.endswith('.json')]
-    index = len(existing_files) + 1
+    pattern = re.compile(rf"^{re.escape(base_filename)}_(\d+)\.json$")
+    indices = []
+    for filename in os.listdir(save_path):
+        match = pattern.match(filename)
+        if match:
+            indices.append(int(match.group(1)))
+    index = max(indices, default=0) + 1
     return f"{base_filename}_{index}.json"
 
 def save_module_results(data, save_path):
@@ -82,6 +84,7 @@ def save_module_results(data, save_path):
     """
     os.makedirs(save_path, exist_ok=True)
     
+    settings = {}
     # 从数据中获取settings
     if isinstance(data, dict) and 'settings' in data:
         settings = data['settings']
@@ -127,6 +130,8 @@ def save_experiment_module_information_results(history, save_path):
 def save_test_module_information_results(save_path="results/test_module/"):
     """保存 test_module 中所有环境的 settings 和各时间点的 population 字符串表示，结构为 settings + information"""
     runtime_populations = global_vars['test_module']["runtime_populations"]
+    if not runtime_populations:
+        raise ValueError("没有可保存的测试运行数据")
 
     # 获取 settings 信息（从任意环境任意时间点提取一次即可）
     any_env = next(iter(runtime_populations.values()))

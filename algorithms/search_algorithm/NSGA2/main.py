@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 
 from algorithms.search_algorithm.Algorithm import Algorithm
@@ -56,11 +55,17 @@ class NSGA2(Algorithm):
         # 按照ProC的杂交概率进行参数变化
         beta[np.repeat(np.random.random((parent_1.shape[0], 1)) > proC, D, 1)] = 1
         # 杂交
-        return np.vstack(((parent_1 + parent_2) / 2 + np.multiply(beta, parent_1 - parent_2) / 2,
-                          (parent_1 + parent_2) / 2 + np.multiply(beta, parent_2 - parent_1) / 2))
+        offspring = np.vstack((
+            (parent_1 + parent_2) / 2 + np.multiply(beta, parent_1 - parent_2) / 2,
+            (parent_1 + parent_2) / 2 + np.multiply(beta, parent_2 - parent_1) / 2,
+        ))
+        # 奇数种群规模会少生成一个子代，补入一个父代副本以保持规模稳定。
+        if len(offspring) < n:
+            offspring = np.vstack((offspring, pop[np.random.randint(len(pop))].copy()))
+        return offspring
 
     def _polynomial_mutation(self, offspring, proM, disM, problem):
-        N = problem.solution_num
+        N = len(offspring)
         Lower = np.tile(problem.xl, (N, 1))
         Upper = np.tile(problem.xu, (N, 1))
 

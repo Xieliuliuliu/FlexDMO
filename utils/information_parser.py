@@ -1,20 +1,23 @@
-import random
 import os
 import json
-import sys
+
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _read_json(path):
+    with open(path, "r", encoding="utf-8") as config_file:
+        return json.load(config_file)
 
 def get_all_dynamic_strategy():
-    # 获取当前脚本所在目录路径，也就是main.py所在的目录
-    root_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-
     # 构建目标目录路径
-    target_dir = os.path.join(root_dir, "algorithms", "response_strategy")
+    target_dir = os.path.join(PROJECT_ROOT, "algorithms", "response_strategy")
 
     # 存储所有策略信息的列表
     strategies = []
 
     # 遍历该目录下的所有文件夹
-    for folder_name in os.listdir(target_dir):
+    for folder_name in sorted(os.listdir(target_dir)):
         folder_path = os.path.join(target_dir, folder_name)
 
         # 确保这是一个文件夹
@@ -25,36 +28,32 @@ def get_all_dynamic_strategy():
             if os.path.isfile(config_path):
                 try:
                     # 假设config文件是JSON格式，读取文件内容
-                    with open(config_path, 'r') as config_file:
-                        config_data = json.load(config_file)
+                    config_data = _read_json(config_path)
 
-                        # 获取name和year信息
-                        name = config_data.get("name")
-                        year = config_data.get("year")
+                    # 获取name和year信息
+                    name = config_data.get("name")
+                    year = config_data.get("year")
 
-                        # 将信息添加到列表
-                        strategies.append({
-                            "folder_name": folder_path,
-                            "name": name,
-                            "year": year
-                        })
+                    # 将信息添加到列表
+                    strategies.append({
+                        "folder_name": folder_path,
+                        "name": name,
+                        "year": year
+                    })
                 except Exception as e:
                     print(f"Error reading config for {folder_name}: {e}")
 
     return strategies
 
 def get_all_search_algorithm():
-    # 获取当前脚本所在目录路径，也就是main.py所在的目录
-    root_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-
     # 构建目标目录路径
-    target_dir = os.path.join(root_dir, "algorithms", "search_algorithm")
+    target_dir = os.path.join(PROJECT_ROOT, "algorithms", "search_algorithm")
 
     # 存储所有搜索算法信息的列表
     search_algorithms = []
 
     # 遍历该目录下的所有文件夹
-    for folder_name in os.listdir(target_dir):
+    for folder_name in sorted(os.listdir(target_dir)):
         folder_path = os.path.join(target_dir, folder_name)
 
         # 确保这是一个文件夹
@@ -65,36 +64,32 @@ def get_all_search_algorithm():
             if os.path.isfile(config_path):
                 try:
                     # 假设config文件是JSON格式，读取文件内容
-                    with open(config_path, 'r') as config_file:
-                        config_data = json.load(config_file)
+                    config_data = _read_json(config_path)
 
-                        # 获取name和year信息
-                        name = config_data.get("name")
-                        year = config_data.get("year")
+                    # 获取name和year信息
+                    name = config_data.get("name")
+                    year = config_data.get("year")
 
-                        # 将信息添加到列表
-                        search_algorithms.append({
-                            "folder_name": folder_path,
-                            "name": name,
-                            "year": year
-                        })
+                    # 将信息添加到列表
+                    search_algorithms.append({
+                        "folder_name": folder_path,
+                        "name": name,
+                        "year": year
+                    })
                 except Exception as e:
                     print(f"Error reading config for {folder_name}: {e}")
 
     return search_algorithms
 
 def get_all_problem():
-    # 获取当前脚本所在目录路径，也就是main.py所在的目录
-    root_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-
     # 构建目标目录路径
-    target_dir = os.path.join(root_dir, "problems", "benchmark")
+    target_dir = os.path.join(PROJECT_ROOT, "problems", "benchmark")
 
     # 存储所有问题信息的列表
     problems = []
 
     # 遍历该目录下的所有文件夹
-    for folder_name in os.listdir(target_dir):
+    for folder_name in sorted(os.listdir(target_dir)):
         folder_path = os.path.join(target_dir, folder_name)
 
         # 确保这是一个文件夹
@@ -105,17 +100,16 @@ def get_all_problem():
             if os.path.isfile(config_path):
                 try:
                     # 假设config文件是JSON格式，读取文件内容
-                    with open(config_path, 'r') as config_file:
-                        config_data = json.load(config_file)
+                    config_data = _read_json(config_path)
 
-                        # 获取name和year信息
-                        name = config_data.get("name")
+                    # 获取name信息
+                    name = config_data.get("name")
 
-                        # 将信息添加到列表
-                        problems.append({
-                            "folder_name": folder_path,
-                            "name": name,
-                        })
+                    # 将信息添加到列表
+                    problems.append({
+                        "folder_name": folder_path,
+                        "name": name,
+                    })
                 except Exception as e:
                     print(f"Error reading config for {folder_name}: {e}")
 
@@ -145,13 +139,14 @@ def find_match_problem(problem_name):
 def get_dynamic_response_config(dynamic_response_name):
     config_data = {}
     matching_strategy = find_match_response_strategy(dynamic_response_name)
+    if matching_strategy is None:
+        return config_data
     config_path = os.path.join(matching_strategy['folder_name'], "config.json")
     # 确保config文件存在并且是文件
     if os.path.isfile(config_path):
         try:
             # 假设config文件是JSON格式，读取文件内容
-            with open(config_path, 'r') as config_file:
-                config_data = json.load(config_file)
+            config_data = _read_json(config_path)
         except Exception as e:
             print(f"Error reading config for {config_path}: {e}")
     return config_data
@@ -169,8 +164,7 @@ def get_search_algorithm_config(search_algorithm_name):
         if os.path.isfile(config_path):
             try:
                 # 假设config文件是JSON格式，读取文件内容
-                with open(config_path, 'r') as config_file:
-                    config_data = json.load(config_file)
+                config_data = _read_json(config_path)
             except Exception as e:
                 print(f"Error reading config for {config_path}: {e}")
 
@@ -188,8 +182,7 @@ def get_problem_config(problem_name):
         if os.path.isfile(config_path):
             try:
                 # 假设config文件是JSON格式，读取文件内容
-                with open(config_path, 'r') as config_file:
-                    config_data = json.load(config_file)
+                config_data = _read_json(config_path)
             except Exception as e:
                 print(f"Error reading config for {config_path}: {e}")
 

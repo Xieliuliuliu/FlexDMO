@@ -5,6 +5,13 @@ import numpy as np
 
 class Problem:
     def __init__(self, decision_num, n_obj, n_con, n, tau, solution_num, total_evaluate_time, label):
+        if decision_num <= 0 or n_obj <= 0:
+            raise ValueError("决策变量数和目标数必须为正数")
+        if n <= 0 or tau <= 0 or solution_num <= 0 or total_evaluate_time <= 0:
+            raise ValueError("n、tau、种群规模和环境变化次数必须为正数")
+        if n_con < 0:
+            raise ValueError("约束数不能为负数")
+
         self.decision_num = decision_num  # 决策变量维度
         self.n_obj = n_obj  # 目标数
         self.xl = np.array([0.0] * decision_num)  # 决策变量下界
@@ -37,6 +44,11 @@ class Problem:
         """
         返回目标函数值，形状：[n_samples, n_obj]
         """
+        X = np.atleast_2d(np.asarray(X, dtype=float))
+        if X.shape[1] != self.decision_num:
+            raise ValueError(
+                f"决策矩阵应有 {self.decision_num} 列，实际为 {X.shape[1]} 列"
+            )
         if self.need_change:
             self._update_time()
             self.need_change = False
@@ -155,3 +167,8 @@ class Problem:
     def reset(self):
         self.t = 0
         self.evaluate_time = 0
+        self.need_change = False
+        self._pf_cache = None
+        self._ps_cache = None
+        self._last_t_pf = None
+        self._last_t_ps = None
