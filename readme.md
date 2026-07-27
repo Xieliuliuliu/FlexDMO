@@ -75,6 +75,8 @@ python -m unittest discover -s tests -v
 
 测试覆盖组件发现、非支配排序、拥挤度选择、性能指标、动态问题状态重置、奇数种群规模、RMMEDA 的 PCA 建模和结果文件命名。推送或提交 Pull Request 时，GitHub Actions 也会自动执行这些测试。
 
+CI 会使用 `pip-audit` 检查 Python 依赖中的已知漏洞，Dependabot 每周检查 Python 包和 GitHub Actions 更新。
+
 运行无界面测试或服务器实验时，可以设置 Matplotlib 后端：
 
 ```bash
