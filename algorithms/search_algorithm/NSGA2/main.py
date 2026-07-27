@@ -14,12 +14,17 @@ class NSGA2(Algorithm):
         self.disM = disM
 
     def optimize(self, problem, response_strategy):
+        self.reset_random_state()
         # 初始化种群
         pop = Population(xl=problem.xl, xu=problem.xu, n_init=problem.solution_num)
         pop.update_objective_constrain(problem)
         while not problem.is_ended() and self.control_process():
             # 检测环境变化
-            if detection(pop, problem, int(0.1 * problem.solution_num)) == 1:
+            if detection(
+                pop,
+                problem,
+                max(1, int(0.1 * problem.solution_num)),
+            ) == 1:
                 pop = response_strategy.response(pop, problem, self)
                 self.collect_information(pop, problem, response_strategy)  # 收集运行信息
                 continue

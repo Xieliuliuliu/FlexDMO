@@ -3,7 +3,11 @@ import unittest
 import numpy as np
 
 from components.Population import Population
-from utils.evolution_tools import crowd_selection, fast_non_dominated_sort
+from utils.evolution_tools import (
+    crowd_selection,
+    fast_non_dominated_sort,
+    quick_non_dominate_sort,
+)
 from utils.metrics import calculate_HV, calculate_IGD
 
 
@@ -36,6 +40,24 @@ class EvolutionToolsTests(unittest.TestCase):
         selected = crowd_selection(population, 3)
 
         self.assertEqual(selected.n, 3)
+
+    def test_constraint_domination_prefers_feasible_solution(self):
+        population = Population(
+            X=np.array([[0.0], [1.0], [2.0]]),
+            F=np.array([[10.0, 10.0], [0.0, 0.0], [1.0, 1.0]]),
+        )
+        population.individuals[0].constraint_violation = 0.0
+        population.individuals[1].constraint_violation = 1.0
+        population.individuals[2].constraint_violation = 0.5
+
+        quick_non_dominate_sort(population)
+
+        self.assertEqual(population.individuals[0].rank, 1)
+        self.assertGreater(population.individuals[1].rank, 1)
+        self.assertLess(
+            population.individuals[2].rank,
+            population.individuals[1].rank,
+        )
 
 
 class MetricsTests(unittest.TestCase):

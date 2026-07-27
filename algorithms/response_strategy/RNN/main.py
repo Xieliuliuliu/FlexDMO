@@ -18,9 +18,10 @@ class RNN(ResponseStrategy):
         self.H = None
 
     def response(self,population, problem, algorithm):
+        RNN_prediction.torch.manual_seed(getattr(algorithm, "seed", 0))
         if self.H is None:
             # 用于存储隐藏状态，在t=0时H不参与运算，但通过设置H为0以及H没有偏置，可以达成这一效果
-            self.H = np.zeros([1, problem.decision_num])
+            self.H = np.zeros([1, self.hidden_size])
 
         quick_non_dominate_sort(population)
         dec_u = crowd_selection(population, self.u).get_decision_matrix()

@@ -1,5 +1,3 @@
-from cProfile import label
-
 from matplotlib import pyplot as plt
 import numpy as np
 from matplotlib.collections import LineCollection
@@ -42,8 +40,26 @@ def draw_PF(information, ax):
             continue
 
     # --- 当前 PF ---
-    ax.scatter(pf_matrix[:, 0], pf_matrix[:, 1],
-               s=10, label="Current PF", alpha=0.6, color='blue')
+    feasible = np.array([ind.feasible for ind in population], dtype=bool)
+    if np.any(feasible):
+        ax.scatter(
+            pf_matrix[feasible, 0],
+            pf_matrix[feasible, 1],
+            s=10,
+            label="Feasible solutions",
+            alpha=0.7,
+            color="blue",
+        )
+    if np.any(~feasible):
+        ax.scatter(
+            pf_matrix[~feasible, 0],
+            pf_matrix[~feasible, 1],
+            s=14,
+            label="Infeasible solutions",
+            alpha=0.7,
+            color="crimson",
+            marker="x",
+        )
 
     # --- 当前 POF（理论） ---
     if true_PF is not None:
@@ -95,7 +111,7 @@ def draw_IGD_curve(information, ax):
             if 'POF' in last_env and 'population' in last_env:
                 # 计算并存储 IGD 值
                 pof = last_env['POF']
-                pop_y = np.array([ind.F for ind in last_env['population']])
+                pop_y = last_env['population'].get_feasible_objective_matrix()
                 igd = calculate_IGD(pop_y, pof)
                 times.append(t_hist)  # 已经确保是整数
                 igd_values.append(igd)
@@ -110,7 +126,7 @@ def draw_IGD_curve(information, ax):
             if 'POF' in current_env and 'population' in current_env:
                 # 计算并存储当前时间点的 IGD 值
                 pof = current_env['POF']
-                pop_y = np.array([ind.F for ind in current_env['population']])
+                pop_y = current_env['population'].get_feasible_objective_matrix()
                 igd = calculate_IGD(pop_y, pof)
                 times.append(t_now)
                 igd_values.append(igd)
@@ -212,6 +228,25 @@ def draw_PS(information, ax):
     plt.tight_layout()
 
 
+def draw_constraint_violation(information, ax):
+    population = information["population"]
+    violations = population.get_constraint_violation_vector()
+    ax.clear()
+    colors = np.where(violations <= 1e-12, "seagreen", "crimson")
+    ax.bar(np.arange(len(violations)), violations, color=colors, width=0.8)
+    ax.axhline(0.0, color="black", linewidth=0.8)
+    ax.set_title(
+        "Constraint Violation "
+        f"(t={information.get('t', '?')}, "
+        f"evaluations={information.get('evaluate_times', '?')})",
+        fontsize=10,
+    )
+    ax.set_xlabel("Individual", fontsize=9)
+    ax.set_ylabel("Total positive violation", fontsize=9)
+    ax.grid(True, axis="y", linestyle="--", alpha=0.4)
+    plt.tight_layout()
+
+
 def draw_selected_chart(information, ax, chart_type='Pareto Front'):
     """根据选择的类型绘制相应的图表
     
@@ -226,5 +261,7 @@ def draw_selected_chart(information, ax, chart_type='Pareto Front'):
         draw_IGD_curve(information, ax)
     elif chart_type == 'Pareto Set':
         draw_PS(information, ax)
+    elif chart_type == 'Constraint Violation':
+        draw_constraint_violation(information, ax)
     else:
         raise ValueError(f"未知的图表类型: {chart_type}")

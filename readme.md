@@ -1,102 +1,100 @@
 # FlexDMO
+
 <div align="center">
   <img src="views/resources/images/icon.png" alt="FlexDMO Logo" width="200"/>
 </div>
 
 [![Tests](https://github.com/Xieliuliuliu/FlexDMO/actions/workflows/tests.yml/badge.svg)](https://github.com/Xieliuliuliu/FlexDMO/actions/workflows/tests.yml)
 
-📚 **简介**
-------------------------------------------------------------
+FlexDMO 是一个可扩展的动态多目标优化实验平台，提供图形界面、算法与问题插件发现、动态环境响应、约束处理、运行回放、指标统计和批量实验功能。
 
-该框架用于实验和测试各类动态多目标算法在不同 benchmarks 和实际问题下的表现。本框架旨在提供一个结构化、可视化的实验环境，方便参数设置、问题选择、算法设计、和性能评估。
+## 主要功能
 
-⚙️ 本框架将持续加入多种算法的实现，并可以轻松地进行扩展以加入新的算法或模块。
+- 搜索算法：NSGA-II、RMMEDA、SPEA2、MOEA/D。
+- 动态响应策略：NoResponse、DIP、MDA、MDP、RNN。
+- 动态问题：DF、FDA、dMOP、DP、F、HE、JY、UDF 系列，以及带时变约束的 CDP1。
+- 约束优化：采用可行性优先规则，依次比较可行性、总约束违反量和 Pareto 支配关系。
+- 结果回放：保存每个环境和评估时刻的决策、目标、约束、可行性、排序、拥挤度、边界、POF/POS；加载后可用时间轴逐帧回放。
+- 可视化：真实 Pareto 前沿、可行/不可行解、IGD、约束违反量和决策空间。
+- 结果分析：MIGD Excel 对比表，支持单算法、缺失组合和多算法秩和检验。
+- 可复现运行：搜索算法支持固定随机种子。
 
-🔍 **注意**  
-实现和结果仅供参考。如果你有更好的实现或改进建议，欢迎通过提交 **Issue** 或 **Email** 与我们进行沟通。我们鼓励社区的反馈和贡献！
+## 安装和启动
 
-## 🌐 官方网站
-FlexDMO 的详细框架说明可通过以下链接访问：👉 https://flexdmo.cn
-
-该网站全面介绍了 FlexDMO 框架的核心功能模块，包括算法组件、测试问题、响应策略、性能指标、在线可视化界面与结果输出功能。
-此外，网站还提供了完整的 API 文档、使用指南、快速入门教程、参数配置说明及自定义扩展方法，旨在为研究人员和开发者提供一个结构化、可扩展、易用的动态多目标优化实验平台，支持高效的算法设计、性能评估与结果分析。
-
-## 📂 项目结构 (Project Structure)
-
-```text
-FlexDMO/
-├── algorithms/ # 算法实现
-│ ├── response_strategy/ # 响应策略相关算法
-│ ├── search_algorithm/ # 搜索算法实现
-├── components/ # 框架组件
-├── plots/ # 可视化绘图模块
-├── problems/ # 问题定义
-│ ├── benchmark/ # 基准测试问题
-│ ├── real_problem/ # 实际问题定义
-├── results_output/ # 对实验结果进行结果输出
-├── utils/ # 工具函数
-├── views/ # 用户界面相关
-├── main.py # 主程序入口
-```
-
-
-💻 **依赖安装**
-------------------------------------------------------------
-
-在开始使用框架之前，首先需要安装相关的依赖库。以下是框架所需的所有库及其安装方式：
+推荐 Python 3.10。
 
 ```bash
-# 1. 克隆仓库
 git clone https://github.com/Xieliuliuliu/FlexDMO.git
 cd FlexDMO
 
-# 2. 创建虚拟环境（推荐）
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# 或 venv\Scripts\activate  # Windows
 
-# 3. 安装依赖
+# Linux/macOS
+source venv/bin/activate
+
+# Windows PowerShell
+venv\Scripts\Activate.ps1
+
 pip install -r requirements.txt
-
-# 4. 开始运行
 python main.py
 ```
 
-建议使用 Python 3.10。图形界面依赖 Tk；Linux 用户如果缺少 Tk，请先通过系统包管理器安装对应的 `python3-tk` 软件包。
+图形界面依赖 Tk。部分 Linux 发行版需要另外安装 `python3-tk`。
 
-🧪 **运行测试**
-------------------------------------------------------------
+## 基本使用
 
-项目使用 Python 标准库 `unittest`，无需额外安装测试框架：
+1. 在“测试模块”选择搜索算法、响应策略和动态问题。
+2. 调整种群规模、动态变化频率、总环境数和随机种子。
+3. 启动任务，在图表中查看当前种群、Pareto 前沿和约束状态。
+4. 使用保存按钮写出完整结果。
+5. 通过“文件 → 打开结果”加载 JSON，并拖动时间轴回放所有快照。
+
+旧版本只保存决策变量的 JSON 仍可加载；缺失的目标和约束会按对应问题与环境重新计算。新保存格式使用 `schema_version: 2`，可以忠实还原回放状态。
+
+## 运行测试
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-测试覆盖组件发现、非支配排序、拥挤度选择、性能指标、动态问题状态重置、奇数种群规模、RMMEDA 的 PCA 建模和结果文件命名。推送或提交 Pull Request 时，GitHub Actions 也会自动执行这些测试。
-
-CI 会使用 `pip-audit` 检查 Python 依赖中的已知漏洞，Dependabot 每周检查 Python 包和 GitHub Actions 更新。
-
-运行无界面测试或服务器实验时，可以设置 Matplotlib 后端：
+无图形界面的服务器可指定 Matplotlib 后端：
 
 ```bash
 # Linux/macOS
 MPLBACKEND=Agg python -m unittest discover -s tests -v
 
-# PowerShell
+# Windows PowerShell
 $env:MPLBACKEND = "Agg"
 python -m unittest discover -s tests -v
 ```
 
-📧 联系方式
-------------------------------------------------------------
-- Issues提交地址: https://github.com/Xieliuliuliu/FlexDMO/issues
-- Email: xiejinsong@whu.edu.cn & hyhhyh@whu.edu.cn
+测试覆盖组件发现与导入、约束支配、非支配排序、种群选择、指标计算、动态环境切换、五种响应策略、四种搜索算法、结果保存加载、回放时间轴和 MIGD 输出。GitHub Actions 会运行测试和 `pip-audit`，Dependabot 每周检查 Python 包与 Actions 更新。
 
-🌟 感谢
-------------------------------------------------------------
-我们感谢所有的贡献者和研究人员！欢迎⭐ Star 和 🔱 Fork！
+## 扩展项目
 
-✅ 许可协议
-------------------------------------------------------------
-本项目采用 Apache-2.0 许可证。
+每个算法、响应策略、问题、图表和结果输出模块都放在独立目录中，并通过 `info.json`、`config.json` 与 `main.py` 描述。复制现有模块并保持相同接口即可加入自定义实现，无需修改中央注册表。
+
+```text
+FlexDMO/
+├── algorithms/
+│   ├── response_strategy/
+│   └── search_algorithm/
+├── components/
+├── plots/
+├── problems/
+│   ├── benchmark/
+│   └── real_problem/
+├── results_output/
+├── tests/
+├── utils/
+├── views/
+└── main.py
+```
+
+详细文档：[flexdmo.cn](https://flexdmo.cn)
+
+## 反馈与许可
+
+- Issues: [Xieliuliuliu/FlexDMO/issues](https://github.com/Xieliuliuliu/FlexDMO/issues)
+- Email: xiejinsong@whu.edu.cn / hyhhyh@whu.edu.cn
+- License: Apache-2.0

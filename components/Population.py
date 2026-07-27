@@ -48,6 +48,27 @@ class Population:
     def get_constrain_matrix(self):
         return np.array([ind.G for ind in self.individuals if ind.G is not None])
 
+    def get_constraint_violation_vector(self):
+        return np.array(
+            [float(ind.constraint_violation) for ind in self.individuals],
+            dtype=float,
+        )
+
+    def get_feasible_objective_matrix(self):
+        values = [
+            ind.F
+            for ind in self.individuals
+            if ind.feasible and ind.F is not None
+        ]
+        if not values:
+            objective_count = (
+                len(self.individuals[0].F)
+                if self.individuals and self.individuals[0].F is not None
+                else 0
+            )
+            return np.empty((0, objective_count), dtype=float)
+        return np.asarray(values, dtype=float)
+
     def update_X(self, X):
         """
         批量更新种群中每个个体的决策变量 X。
@@ -68,10 +89,12 @@ class Population:
             ind.F = F[i]
             if G is not None:
                 ind.G = G[i]
-                ind.feasible = np.all(G[i] <= 0)
+                ind.constraint_violation = float(np.sum(np.maximum(G[i], 0.0)))
+                ind.feasible = ind.constraint_violation <= 1e-12
             else:
                 ind.G = None
                 ind.feasible = True
+                ind.constraint_violation = 0.0
 
     def __len__(self):
         return len(self.individuals)
@@ -80,26 +103,31 @@ class Population:
         return self.individuals[idx]
 
     def to_dict(self):
-        result = {
-            "decision": [],
-            # "objective": [],
-            # "constrain": []
+        def array_or_none(value):
+            return value.tolist() if value is not None else None
+
+        return {
+            "schema_version": 2,
+            "decision": [array_or_none(ind.X) for ind in self.individuals],
+            "objective": [array_or_none(ind.F) for ind in self.individuals],
+            "constraint": [array_or_none(ind.G) for ind in self.individuals],
+            "feasible": [bool(ind.feasible) for ind in self.individuals],
+            "constraint_violation": [
+                float(ind.constraint_violation) for ind in self.individuals
+            ],
+            "rank": [ind.rank for ind in self.individuals],
+            "crowding_distance": [
+                float(ind.crowding_distance)
+                if (
+                    ind.crowding_distance is not None
+                    and np.isfinite(ind.crowding_distance)
+                )
+                else None
+                for ind in self.individuals
+            ],
+            "xl": array_or_none(self.xl),
+            "xu": array_or_none(self.xu),
         }
-
-        for ind in self.individuals:
-            result["decision"].append(ind.X.tolist())
-
-            # if ind.F is not None:
-            #     result["objective"].append(ind.F.tolist())
-            # else:
-            #     pass
-
-            # if ind.G is not None:
-            #     result["constrain"].append(ind.G.tolist())
-            # else:
-            #     pass
-
-        return result
 
     def __repr__(self):
         total = len(self.individuals)

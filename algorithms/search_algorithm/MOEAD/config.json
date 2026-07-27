@@ -1,0 +1,9 @@
+{
+  "seed": 1,
+  "neighbor_size": 20,
+  "delta": 0.9,
+  "max_replacements": 2,
+  "differential_weight": 0.5,
+  "proM": 1.0,
+  "disM": 20
+}

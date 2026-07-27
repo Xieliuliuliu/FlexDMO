@@ -74,6 +74,15 @@ def _iter_last_snapshots(runtime_populations):
         last_key = max(populations, key=lambda key: int(key))
         yield populations[last_key]
 
+
+def _feasible_objectives(population):
+    if hasattr(population, "get_feasible_objective_matrix"):
+        return population.get_feasible_objective_matrix()
+    return np.asarray(
+        [ind.F for ind in population if getattr(ind, "feasible", True)],
+        dtype=float,
+    )
+
 def calculate_MIGD(runtime_populations):
     """计算平均反向世代距离(MIGD)
     
@@ -90,7 +99,7 @@ def calculate_MIGD(runtime_populations):
             continue
             
         pof = np.array(last_env['POF'])
-        pop_y = np.array([ind.F for ind in last_env['population']])
+        pop_y = _feasible_objectives(last_env['population'])
         value = calculate_IGD(pop_y, pof)
         time_metric_values.append(value)
     
@@ -112,8 +121,12 @@ def calculate_MGD(runtime_populations):
             continue
             
         pof = np.array(last_env['POF'])
-        pop_y = np.array([ind.F for ind in last_env['population']])
-        value = calculate_IGD(pof, pop_y)
+        pop_y = _feasible_objectives(last_env['population'])
+        value = (
+            float("inf")
+            if pop_y.size == 0
+            else calculate_IGD(pof, pop_y)
+        )
         time_metric_values.append(value)
     
     return np.mean(time_metric_values) if time_metric_values else 0.0
@@ -134,7 +147,7 @@ def calculate_MHV(runtime_populations):
             continue
             
         pof = np.array(last_env['POF'])
-        pop_y = np.array([ind.F for ind in last_env['population']])
+        pop_y = _feasible_objectives(last_env['population'])
         ref_point = pof.max(axis=0) + 0.5
         value = calculate_HV(pop_y, ref_point)
         time_metric_values.append(value)

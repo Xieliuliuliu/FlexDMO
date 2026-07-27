@@ -146,7 +146,7 @@ def listen_pipe(parent_conn, process):
         # 在启动时禁用进度条
         scale = global_vars['test_module'].get('scale')
         if scale:
-            scale.configure(state='disabled')
+            scale.after(0, lambda: scale.configure(state='disabled'))
             
         while True:
 
@@ -158,9 +158,13 @@ def listen_pipe(parent_conn, process):
             if parent_conn.poll(0.1):
                 try:
                     information = parent_conn.recv()
-                    # print(f"[主进程] 收到子进程信息")
                     save_runtime_population_information(information)
-                    draw_chart(information)
+                    canvas = global_vars['test_module'].get('canvas')
+                    if canvas is not None:
+                        canvas.get_tk_widget().after(
+                            0,
+                            lambda item=information: draw_chart(item),
+                        )
                 except EOFError:
                     print("[主进程] Pipe连接已关闭（EOF）")
                     break
@@ -170,24 +174,29 @@ def listen_pipe(parent_conn, process):
         print("[主进程] close parent")
         # 在结束时启用进度条
         scale = global_vars['test_module'].get('scale')
-        try:
-            # 检查是否需要保存结果
-            if global_vars['test_module']['save_result'].get():
-                print("正在保存运行数据")
-                save_test_module_information_results()
-        except Exception as e:
-            print(f"[主进程] 保存数据异常: {e}")
+        def finalize_ui():
+            try:
+                save_result = global_vars['test_module'].get('save_result')
+                if save_result is not None and save_result.get():
+                    print("正在保存运行数据")
+                    save_test_module_information_results()
+            except Exception as e:
+                print(f"[主进程] 保存数据异常: {e}")
+            if scale:
+                scale.configure(state='normal')
+
         if scale:
-            scale.configure(state='normal')
+            scale.after(0, finalize_ui)
+        else:
+            finalize_ui()
         parent_conn.close()
 
 def canvas_draw(canvas,canvas_version):
     lock = global_vars['test_module']['canvas_lock']
-    lock.acquire()
-    canvas_version_after = global_vars['test_module']['canvas_version']
-    if canvas_version == canvas_version_after:
-        canvas.draw()
-    lock.release()
+    with lock:
+        canvas_version_after = global_vars['test_module']['canvas_version']
+        if canvas_version == canvas_version_after:
+            canvas.draw()
 
 
 def save_runtime_population_information(information):
@@ -207,21 +216,17 @@ def save_runtime_population_information(information):
 
 
 def draw_chart(information):
-     # 更新图表
+    # 更新图表；调用方必须位于 Tk 主线程。
     canvas = global_vars['test_module'].get('canvas')
+    if canvas is None or information is None:
+        return
     fig = canvas.figure
 
     # 获取要显示的图表类型
     result_to_show = global_vars['test_module'].get('result_to_show', ['Pareto Front'])
     lock = global_vars['test_module']['canvas_lock']
     canvas_version = global_vars['test_module']['canvas_version']
-    lock.acquire()
-
-    # 遍历 fig.axes 和 result_to_show，一一进行绘图
-    for ax, result_type in zip(fig.axes, result_to_show):
-       draw_selected_chart(information, ax, result_type)
-
-    # 更新图表
-    lock.release()
-    # 如果不是主线程，使用 after 方法在主线程中调用 canvas.draw()
-    canvas.get_tk_widget().after(0, lambda: canvas_draw(canvas, canvas_version))
+    with lock:
+        for ax, result_type in zip(fig.axes, result_to_show):
+            draw_selected_chart(information, ax, result_type)
+    canvas_draw(canvas, canvas_version)

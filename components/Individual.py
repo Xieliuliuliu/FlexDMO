@@ -1,12 +1,11 @@
 import copy
-import numpy as np
-
 class Individual:
     def __init__(self, X, F=None):
         self.X = X
         self.F = F
         self.G = None
         self.feasible = True
+        self.constraint_violation = 0.0
         self.rank = None           # NSGA-II等排序等级
         self.crowding_distance = None  # 拥挤距离
 
@@ -22,6 +21,7 @@ class Individual:
         new_individual.F = self.F.copy() if self.F is not None else None
         new_individual.G = self.G.copy() if self.G is not None else None
         new_individual.feasible = self.feasible
+        new_individual.constraint_violation = self.constraint_violation
         new_individual.rank = self.rank
         new_individual.crowding_distance = self.crowding_distance
         return new_individual

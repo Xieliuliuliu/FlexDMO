@@ -49,7 +49,9 @@ class Problem:
             raise ValueError(
                 f"决策矩阵应有 {self.decision_num} 列，实际为 {X.shape[1]} 列"
             )
-        if self.need_change:
+        # 环境只在算法的无计数检测阶段推进。响应策略可能在一次
+        # 环境变化中执行多次有计数评价，不能因此连续跳过多个环境。
+        if self.need_change and not need_count and t is None:
             self._update_time()
             self.need_change = False
         if t is None:

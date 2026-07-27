@@ -1,4 +1,5 @@
 import tkinter as tk
+import threading
 from tkinter import ttk
 
 class TaskProgress(ttk.Frame):
@@ -79,7 +80,10 @@ class TaskProgress(ttk.Frame):
         Args:
             value: 进度值（0-100）
         """
-        self.progress['value'] = value
+        if threading.current_thread() is threading.main_thread():
+            self.progress['value'] = value
+        else:
+            self.after(0, lambda: self.progress.configure(value=value))
     
     def update_status(self, status):
         """更新状态文本
@@ -87,7 +91,10 @@ class TaskProgress(ttk.Frame):
         Args:
             status: 状态文本
         """
-        self.status_var.set(status)
+        if threading.current_thread() is threading.main_thread():
+            self.status_var.set(status)
+        else:
+            self.after(0, lambda: self.status_var.set(status))
     
     def destroy(self):            
         """销毁任务卡片，清理所有资源"""
@@ -149,4 +156,4 @@ class TaskProgress(ttk.Frame):
             'problem_config': self.problem_config,
             'dynamic_config': self.dynamic_config,
             'search_config': self.search_config
-        } 
+        }

@@ -6,3 +6,4 @@ ttkbootstrap==1.12.0
 pandas
 scipy
 openpyxl
+torch==2.13.0

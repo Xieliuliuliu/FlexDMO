@@ -5,22 +5,60 @@ from components.Population import Population
 from problems.Problem import Problem
 
 
-def fast_non_dominated_sort(objectives: np.ndarray) -> List[np.ndarray]:
+def domination_matrix(
+    objectives: np.ndarray,
+    constraint_violations: np.ndarray | None = None,
+) -> np.ndarray:
+    """Return the constraint-domination matrix for a minimization problem.
+
+    Feasible solutions dominate infeasible solutions. Between infeasible
+    solutions, the lower total positive constraint violation wins. Pareto
+    dominance is applied only when both solutions are feasible.
+    """
+    objectives = np.asarray(objectives, dtype=float)
+    if objectives.ndim != 2:
+        raise ValueError("目标函数矩阵必须是二维数组")
+    n = len(objectives)
+    if constraint_violations is None:
+        violations = np.zeros(n, dtype=float)
+    else:
+        violations = np.asarray(constraint_violations, dtype=float).reshape(-1)
+        if len(violations) != n:
+            raise ValueError("约束违反量数量必须与目标函数矩阵行数一致")
+        if np.any(~np.isfinite(violations)) or np.any(violations < 0):
+            raise ValueError("约束违反量必须是有限的非负数")
+
+    less_or_equal = np.all(objectives[:, None] <= objectives[None, :], axis=2)
+    strictly_less = np.any(objectives[:, None] < objectives[None, :], axis=2)
+    pareto = less_or_equal & strictly_less
+
+    lower_violation = violations[:, None] < violations[None, :]
+    equal_violation = np.isclose(
+        violations[:, None], violations[None, :], rtol=1e-12, atol=1e-12
+    )
+    both_feasible = (
+        (violations[:, None] <= 1e-12)
+        & (violations[None, :] <= 1e-12)
+    )
+    domination = lower_violation | (equal_violation & both_feasible & pareto)
+    np.fill_diagonal(domination, False)
+    return domination
+
+
+def fast_non_dominated_sort(
+    objectives: np.ndarray,
+    constraint_violations: np.ndarray | None = None,
+) -> List[np.ndarray]:
     """
     完全向量化的快速非支配排序（无显式循环），作为工具使用，便于之后的crowd_selection和quick_non_dominate_sort
     :param objectives: 目标函数矩阵，形状 (n, m), n为个体数, m为目标数
     :return: 前沿列表，每个元素是前沿个体的索引数组
     """
+    objectives = np.asarray(objectives, dtype=float)
     n = objectives.shape[0]
-
-    # 1. 计算支配关系矩阵 (n, n)
-    # 使用广播比较所有个体对 (i,j): [n,1,m] <= [1,n,m] → [n,n,m]
-    less_or_equal = np.all(objectives[:, None] <= objectives[None, :], axis=2)
-    strictly_less = np.any(objectives[:, None] < objectives[None, :], axis=2)
-    domination = less_or_equal & strictly_less
-
-    # 排除自支配 (i,i)
-    np.fill_diagonal(domination, False)
+    if n == 0:
+        return []
+    domination = domination_matrix(objectives, constraint_violations)
 
     # 2. 计算被支配次数 (axis=0: 列求和)
     dominated_counts = np.sum(domination, axis=0)
@@ -83,8 +121,9 @@ def quick_non_dominate_sort(population):
 
     # 提取目标函数矩阵
     objectives = population.get_objective_matrix()
+    violations = population.get_constraint_violation_vector()
     # 调用 fast_non_dominated_sort 获取前沿列表
-    fronts_indices = fast_non_dominated_sort(objectives)
+    fronts_indices = fast_non_dominated_sort(objectives, violations)
 
     # 为每个个体分配排名
     for rank, front_indices in enumerate(fronts_indices, start=1):
@@ -103,14 +142,20 @@ def crowd_selection(population, N):
 
     # 提取目标函数矩阵
     objectives = population.get_objective_matrix()
+    violations = population.get_constraint_violation_vector()
     # 执行快速非支配排序
-    fronts = fast_non_dominated_sort(objectives)
+    fronts = fast_non_dominated_sort(objectives, violations)
 
     target_pop = []
     current_count = 0
 
     for front_indices in fronts:
         front = [population.individuals[i] for i in front_indices]
+        dist = crowding_distance(objectives, front_indices)
+        for local_index, population_index in enumerate(front_indices):
+            population.individuals[population_index].crowding_distance = float(
+                dist[local_index]
+            )
 
         if current_count + len(front) <= N:
             # 如果当前前沿的个体数量小于等于需要的数量，全部选择
@@ -118,8 +163,6 @@ def crowd_selection(population, N):
             current_count += len(front)
         else:
             # 如果当前前沿的个体数量大于需要的数量，使用拥挤度选择
-            objectives = population.get_objective_matrix()
-            dist = crowding_distance(objectives, front_indices)
             sorted_indices = front_indices[np.argsort(-dist)]
             target_pop.extend([population.individuals[i] for i in sorted_indices[:N - current_count]])
             break
@@ -139,27 +182,15 @@ def isDominated(A, B):
         0: A被B支配
         2: A和B互不支配
     """
-    obj_dim = A.F.shape[0]
-    better_count = 0
-    worse_count = 0
-    equal_count = 0
-    
-    for i in range(obj_dim):
-        if A.F[i] < B.F[i]:
-            better_count += 1
-        elif A.F[i] == B.F[i]:
-            equal_count += 1
-        else:
-            worse_count += 1
-            
-    if better_count == obj_dim:
-        return 1  # A支配B
-    if better_count + equal_count == obj_dim and better_count > 0:
-        return 1  # A支配B
-    if worse_count == obj_dim:
-        return 0  # A被B支配
-    if worse_count + equal_count == obj_dim and worse_count > 0:
-        return 0  # A被B支配
+    objectives = np.vstack((A.F, B.F))
+    violations = np.array(
+        [A.constraint_violation, B.constraint_violation], dtype=float
+    )
+    relation = domination_matrix(objectives, violations)
+    if relation[0, 1]:
+        return 1
+    if relation[1, 0]:
+        return 0
     return 2  # A和B互不支配
 
 

@@ -6,13 +6,22 @@ import numpy as np
 
 from algorithms.response_strategy.NoResponse.main import NoResponse
 from algorithms.search_algorithm.NSGA2.main import NSGA2
+from algorithms.search_algorithm.MOEAD.main import MOEAD
 from algorithms.search_algorithm.RMMEDA.LocalPCA import LocalPCA
+from algorithms.search_algorithm.SPEA2.main import SPEA2
 from components.Individual import Individual
 from components.Population import Population
 from problems.Problem import Problem
 from problems.benchmark.DF1.main import DF1
+from problems.benchmark.CDP1.main import CDP1
 from utils.metrics import calculate_IGD, calculate_MIGD
-from utils.result_io import _get_next_filename
+from utils.result_io import (
+    _get_next_filename,
+    load_test_module_information_results,
+    save_test_module_information_results,
+)
+from views.common.GlobalVar import global_vars
+from views.test_module.test_module_handler import build_replay_timeline
 
 
 class ToyProblem(Problem):
@@ -75,6 +84,18 @@ class ProblemRegressionTests(unittest.TestCase):
         self.assertIsNone(problem._pf_cache)
         self.assertIsNone(problem._ps_cache)
 
+    def test_environment_advances_only_during_detection_evaluation(self):
+        problem = ToyProblem()
+        problem.need_change = True
+
+        problem.evaluate(np.array([[0.0, 0.0]]), need_count=True)
+        self.assertEqual(problem.t, 0)
+        self.assertTrue(problem.need_change)
+
+        problem.evaluate(np.array([[0.0, 0.0]]), need_count=False)
+        self.assertEqual(problem.t, 1)
+        self.assertFalse(problem.need_change)
+
 
 class AlgorithmRegressionTests(unittest.TestCase):
     def test_nsga2_supports_odd_population_size(self):
@@ -104,6 +125,37 @@ class AlgorithmRegressionTests(unittest.TestCase):
         for model in models:
             self.assertTrue(np.isrealobj(model["PI"]))
 
+    def test_new_algorithms_run_on_constrained_dynamic_problem(self):
+        for algorithm in (SPEA2(seed=8), MOEAD(seed=8, neighbor_size=3)):
+            problem = CDP1(
+                decision_num=5,
+                n=10,
+                tau=1,
+                solution_num=6,
+                total_evaluate_time=1,
+            )
+            algorithm.optimize(problem, NoResponse())
+            last_population = list(
+                list(algorithm.history["runtime"].values())[-1].values()
+            )[-1]
+            self.assertEqual(last_population.n, 6)
+            self.assertTrue(
+                np.isfinite(last_population.get_objective_matrix()).all()
+            )
+            self.assertTrue(any(ind.feasible for ind in last_population))
+
+    def test_seed_reproduces_nsga2_result(self):
+        decisions = []
+        for _ in range(2):
+            problem = DF1(5, 10, 1, 5, 1)
+            algorithm = NSGA2(seed=42)
+            algorithm.optimize(problem, NoResponse())
+            last_population = list(
+                list(algorithm.history["runtime"].values())[-1].values()
+            )[-1]
+            decisions.append(last_population.get_decision_matrix())
+        np.testing.assert_allclose(decisions[0], decisions[1])
+
 
 class MetricsRegressionTests(unittest.TestCase):
     def test_igd_for_empty_population_is_infinite(self):
@@ -121,6 +173,23 @@ class MetricsRegressionTests(unittest.TestCase):
         }
         self.assertEqual(calculate_MIGD(runtime), 0.0)
 
+    def test_migd_ignores_infeasible_solutions(self):
+        infeasible = Individual(np.array([0.0]), np.array([0.0, 0.0]))
+        infeasible.feasible = False
+        infeasible.constraint_violation = 1.0
+        feasible = Individual(np.array([1.0]), np.array([1.0, 1.0]))
+        runtime = {
+            0: {
+                1: {
+                    "POF": [[0.0, 0.0]],
+                    "population": Population(
+                        individuals=[infeasible, feasible]
+                    ),
+                }
+            }
+        }
+        self.assertAlmostEqual(calculate_MIGD(runtime), np.sqrt(2.0))
+
 
 class ResultIoRegressionTests(unittest.TestCase):
     def test_next_filename_does_not_overwrite_when_indices_have_gaps(self):
@@ -129,6 +198,83 @@ class ResultIoRegressionTests(unittest.TestCase):
                 open(os.path.join(directory, name), "w", encoding="utf-8").close()
 
             self.assertEqual(_get_next_filename(directory, "result"), "result_4.json")
+
+    def test_constrained_result_round_trip_preserves_replay_data(self):
+        problem = CDP1(3, 10, 1, 4, 2)
+        population = Population(
+            X=np.array(
+                [
+                    [0.1, 0.5, 0.5],
+                    [0.4, 0.5, 0.5],
+                    [0.8, 0.5, 0.5],
+                    [1.0, 0.5, 0.5],
+                ]
+            ),
+            xl=problem.xl,
+            xu=problem.xu,
+        )
+        population.update_objective_constrain(problem)
+        settings = {
+            "problem_class": "CDP1",
+            "search_algorithm_class": "NSGA2",
+            "response_strategy_class": "NoResponse",
+            "problem_params": {
+                "decision_num": 3,
+                "n": 10,
+                "tau": 1,
+                "solution_num": 4,
+                "total_evaluate_time": 2,
+            },
+        }
+        snapshot = {
+            "settings": settings,
+            "POS": problem.get_pareto_set(),
+            "POF": problem.get_pareto_front(),
+            "bound": [problem.xl, problem.xu],
+            "t": 0,
+            "evaluate_times": problem.evaluate_time,
+            "population": population,
+        }
+        original_test_module = global_vars.get("test_module")
+        try:
+            global_vars["test_module"] = {
+                "runtime_populations": {
+                    0: {problem.evaluate_time: snapshot}
+                }
+            }
+            with tempfile.TemporaryDirectory() as directory:
+                result_path = save_test_module_information_results(directory)
+                loaded = load_test_module_information_results(result_path)
+            restored = loaded["runtime_populations"][0][problem.evaluate_time]
+            restored_population = restored["population"]
+            np.testing.assert_allclose(
+                restored_population.get_objective_matrix(),
+                population.get_objective_matrix(),
+            )
+            np.testing.assert_allclose(
+                restored_population.get_constrain_matrix(),
+                population.get_constrain_matrix(),
+            )
+            self.assertEqual(
+                [ind.feasible for ind in restored_population],
+                [ind.feasible for ind in population],
+            )
+        finally:
+            if original_test_module is None:
+                global_vars.pop("test_module", None)
+            else:
+                global_vars["test_module"] = original_test_module
+
+    def test_replay_timeline_orders_snapshots_globally(self):
+        runtime = {
+            1: {30: {"id": "third"}},
+            0: {20: {"id": "second"}, 5: {"id": "first"}},
+        }
+        timeline = build_replay_timeline(runtime)
+        self.assertEqual(
+            [item[2]["id"] for item in timeline],
+            ["first", "second", "third"],
+        )
 
 
 if __name__ == "__main__":

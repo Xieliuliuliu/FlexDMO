@@ -95,6 +95,21 @@ def save_module_results(data, save_path):
     
     full_path = os.path.join(save_path, filename)
     _save_json_with_numpy(data, full_path)
+    return full_path
+
+
+def _serialize_runtime_snapshot(information):
+    snapshot = information["population"].to_dict()
+    for source_key, target_key in (
+        ("POS", "POS"),
+        ("POF", "POF"),
+        ("bound", "bound"),
+        ("t", "t"),
+        ("evaluate_times", "evaluate_times"),
+    ):
+        if source_key in information:
+            snapshot[target_key] = information[source_key]
+    return snapshot
 
 def save_experiment_module_information_results(history, save_path):
     """保存实验模块的结果
@@ -125,7 +140,7 @@ def save_experiment_module_information_results(history, save_path):
         "information": runtime_dict
     }
     
-    save_module_results(final_result, result_dir)
+    return save_module_results(final_result, result_dir)
 
 def save_test_module_information_results(save_path="results/test_module/"):
     """保存 test_module 中所有环境的 settings 和各时间点的 population 字符串表示，结构为 settings + information"""
@@ -151,12 +166,12 @@ def save_test_module_information_results(save_path="results/test_module/"):
         # 提取该环境下的每个时间点 population
         for time_key, info in population_info.items():
             if "population" in info:
-                env_population_record[str(time_key)] = info["population"].to_dict()
+                env_population_record[str(time_key)] = _serialize_runtime_snapshot(info)
 
         final_result["information"][str(env_key)] = env_population_record
 
     # 使用通用保存函数
-    save_module_results(final_result, save_path)
+    return save_module_results(final_result, save_path)
 
 def load_test_module_information_results(file_path):
     """从JSON文件中加载测试模块的结果信息
@@ -180,7 +195,10 @@ def load_test_module_information_results(file_path):
         
         # 动态导入问题类
         from utils.run_executor import load_main_class_from_folder
-        ProblemClass = load_main_class_from_folder(find_match_problem(problem_class)['folder_name'])
+        matching_problem = find_match_problem(problem_class)
+        if matching_problem is None:
+            raise ValueError(f"无法找到结果所需的问题: {problem_class}")
+        ProblemClass = load_main_class_from_folder(matching_problem['folder_name'])
         
         # 获取默认配置并更新
         config = get_problem_config(problem_class)
@@ -202,39 +220,89 @@ def load_test_module_information_results(file_path):
                 # 从字典重建Population对象
                 individuals = []
                 decisions = pop_data.get('decision', [])
-                objectives,constrains = problem.evaluate(np.array(decisions),False,t=int(env_key))
-       
-                
-                # 确保所有列表长度一致
-                min_length = min(len(decisions), len(objectives))
-                if min_length == 0:
+                if not decisions:
                     continue
+
+                stored_objectives = pop_data.get("objective")
+                stored_constraints = pop_data.get("constraint")
+                has_objectives = (
+                    isinstance(stored_objectives, list)
+                    and len(stored_objectives) == len(decisions)
+                    and all(value is not None for value in stored_objectives)
+                )
+                if has_objectives:
+                    objectives = np.asarray(stored_objectives, dtype=float)
+                    constrains = (
+                        np.asarray(stored_constraints, dtype=float)
+                        if (
+                            isinstance(stored_constraints, list)
+                            and len(stored_constraints) == len(decisions)
+                            and all(value is not None for value in stored_constraints)
+                        )
+                        else None
+                    )
+                else:
+                    objectives, constrains = problem.evaluate(
+                        np.asarray(decisions, dtype=float),
+                        False,
+                        t=int(env_key),
+                    )
                     
-                for i in range(min_length):
+                for i in range(len(decisions)):
                     # 创建个体
                     individual = Individual(np.array(decisions[i]))
-                    
-                    # 设置目标值
-                    if i < len(objectives):
-                        individual.F = np.array(objectives[i])
+                    individual.F = np.array(objectives[i])
                     
                     # 设置约束值
                     if constrains is not None:
                         individual.G = np.array(constrains[i])
-                        individual.feasible = np.all(constrains[i] <= 0)
+                        individual.constraint_violation = float(
+                            np.sum(np.maximum(constrains[i], 0.0))
+                        )
+                        individual.feasible = individual.constraint_violation <= 1e-12
+                    else:
+                        individual.constraint_violation = 0.0
+                        individual.feasible = True
+
+                    for field in ("feasible", "constraint_violation", "rank"):
+                        values = pop_data.get(field)
+                        if isinstance(values, list) and i < len(values):
+                            setattr(individual, field, values[i])
+                    crowding = pop_data.get("crowding_distance")
+                    if (
+                        isinstance(crowding, list)
+                        and i < len(crowding)
+                        and crowding[i] is not None
+                    ):
+                        individual.crowding_distance = float(crowding[i])
                     
                     individuals.append(individual)
                     
                 # 创建种群
-                population = Population(individuals=individuals)
+                bounds = pop_data.get("bound")
+                xl = pop_data.get("xl")
+                xu = pop_data.get("xu")
+                if bounds and len(bounds) == 2:
+                    xl, xu = bounds
+                population = Population(
+                    individuals=individuals,
+                    xl=np.asarray(xl, dtype=float) if xl is not None else problem.xl,
+                    xu=np.asarray(xu, dtype=float) if xu is not None else problem.xu,
+                )
                 
                 # 设置问题的时间步
                 t = int(env_key)
                 problem.t = t
                 
                 # 使用问题类获取当前时间步的POF和POS
-                POF = problem.get_pareto_front(t)
-                POS = problem.get_pareto_set(t)
+                POF = np.asarray(
+                    pop_data.get("POF", problem.get_pareto_front(t)),
+                    dtype=float,
+                )
+                POS = np.asarray(
+                    pop_data.get("POS", problem.get_pareto_set(t)),
+                    dtype=float,
+                )
                 
                 # 重建每个时间点的信息字典
                 env_populations[int(time_key)] = {
@@ -242,7 +310,7 @@ def load_test_module_information_results(file_path):
                     'settings': settings,  # 每个时间点都包含相同的settings
                     'POS': POS,
                     'POF': POF,
-                    'bound': [np.array(b) for b in pop_data.get('bound', [[], []])],
+                    'bound': [population.xl, population.xu],
                     't': t,
                     'evaluate_times': int(time_key)
                 }

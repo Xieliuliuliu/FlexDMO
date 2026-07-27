@@ -1,5 +1,5 @@
-import os
 import tkinter as tk
+from tkinter import filedialog, messagebox
 
 import ttkbootstrap as ttk
 from PIL import Image, ImageTk  # 导入Pillow库
@@ -83,23 +83,44 @@ def create_menu_bar(root):
     """Create menu bar with dark theme."""
     menu_bar = tk.Menu(root, background='blue', fg='white')  # Dark background for menu bar
 
-    # File menu
+    def open_result():
+        file_path = filedialog.askopenfilename(
+            title="Open FlexDMO Result",
+            initialdir="results",
+            filetypes=[("FlexDMO JSON result", "*.json")],
+        )
+        if not file_path:
+            return
+        from views.test_module.test_module_handler import (
+            load_selected_result,
+            update_progress_control,
+        )
+
+        result = load_selected_result(file_path)
+        if result is None:
+            messagebox.showerror("FlexDMO", "Result file could not be loaded.")
+            return
+        scale = global_vars["test_module"].get("scale")
+        current_label = global_vars["test_module"].get("current_label")
+        total_label = global_vars["test_module"].get("total_label")
+        if scale and current_label and total_label:
+            update_progress_control(scale, current_label, total_label)
+        messagebox.showinfo("FlexDMO", "Result loaded. Use the progress slider to replay it.")
+
     file_menu = tk.Menu(menu_bar, tearoff=0)
-    file_menu.add_command(label="New", command=lambda: print("New File"))
-    file_menu.add_command(label="Open", command=lambda: print("Open File"))
+    file_menu.add_command(label="Open Result...", command=open_result)
     file_menu.add_separator()
-    file_menu.add_command(label="Exit", command=root.quit)
+    file_menu.add_command(label="Exit", command=root.event_generate("<<CloseApp>>"))
     menu_bar.add_cascade(label="File", menu=file_menu)
 
-    # Edit menu
-    edit_menu = tk.Menu(menu_bar, tearoff=0)
-    edit_menu.add_command(label="Undo", command=lambda: print("Undo"))
-    edit_menu.add_command(label="Redo", command=lambda: print("Redo"))
-    menu_bar.add_cascade(label="Edit", menu=edit_menu)
-
-    # Help menu
     help_menu = tk.Menu(menu_bar, tearoff=0)
-    help_menu.add_command(label="About", command=lambda: print("FlexDMO"))
+    help_menu.add_command(
+        label="About",
+        command=lambda: messagebox.showinfo(
+            "About FlexDMO",
+            "FlexDMO\nDynamic multi-objective optimization platform",
+        ),
+    )
     menu_bar.add_cascade(label="Help", menu=help_menu)
 
     # Adding the menu bar to the root window
@@ -152,8 +173,8 @@ def create_main_window():
 
     # 注册关闭窗口的事件
     root.protocol("WM_DELETE_WINDOW", on_exit)
+    root.bind("<<CloseApp>>", lambda _event: on_exit())
     # 启动 Tkinter 主循环
     root.mainloop()
-
 
 

@@ -135,7 +135,10 @@ def listen_experiment_pipe(parent_conn, process, task_card):
                 task_card.update_status(final_status)
                 # 调用完成回调函数
                 if hasattr(task_card, 'on_complete') and task_card.on_complete:
-                    task_card.on_complete(task_card)
+                    task_card.after(
+                        0,
+                        lambda: task_card.on_complete(task_card),
+                    )
                 return  # 直接返回，结束线程
                 
             # 检查是否有新数据
@@ -157,7 +160,10 @@ def listen_experiment_pipe(parent_conn, process, task_card):
                     task_card.update_status('completed')
                     # 调用完成回调函数
                     if hasattr(task_card, 'on_complete') and task_card.on_complete:
-                        task_card.on_complete(task_card)
+                        task_card.after(
+                            0,
+                            lambda: task_card.on_complete(task_card),
+                        )
                     return  # 直接返回，结束线程
             
     except Exception as e:
@@ -169,7 +175,10 @@ def listen_experiment_pipe(parent_conn, process, task_card):
             task_card.update_status('completed')
             # 调用完成回调函数
             if hasattr(task_card, 'on_complete') and task_card.on_complete:
-                task_card.on_complete(task_card)
+                task_card.after(
+                    0,
+                    lambda: task_card.on_complete(task_card),
+                )
         return  # 发生异常时也结束线程
     finally:
         # 确保关闭连接

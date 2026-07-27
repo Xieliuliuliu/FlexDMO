@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from python_utils.time import epoch
 
 from torch.utils.data import DataLoader,Dataset
 
@@ -126,4 +125,3 @@ def predict_by_rnn(model: RNN, input, Ht1):
     outputs = np.vstack(outputs)
 
     return outputs
-

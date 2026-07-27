@@ -11,6 +11,7 @@ class DIP(ResponseStrategy):
         super().__init__()
 
     def response(self,population, problem, algorithm):
+        DIP_ANN.torch.manual_seed(getattr(algorithm, "seed", 0))
         X_Low = problem.xl
         X_Upp = problem.xu
         DIM = problem.decision_num

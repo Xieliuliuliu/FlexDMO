@@ -1,10 +1,12 @@
-import json
-import os
+import random
 import time
 from multiprocessing import current_process
 
+import numpy as np
+
+
 class Algorithm:
-    def __init__(self,state=None,pip=None,mode='test'):
+    def __init__(self, state=None, pip=None, mode='test', seed=1):
         """
         基础算法抽象类。
         :param state: 进程状态
@@ -15,6 +17,15 @@ class Algorithm:
         self.state = state
         self.pip = pip
         self.mode = mode  # 保存运行模式
+        self.seed = None if seed is None else int(seed)
+        if self.seed is not None:
+            random.seed(self.seed)
+            np.random.seed(self.seed)
+
+    def reset_random_state(self):
+        if self.seed is not None:
+            random.seed(self.seed)
+            np.random.seed(self.seed)
 
     def optimize(self, problem, response_strategy):
         """

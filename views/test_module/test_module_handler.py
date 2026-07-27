@@ -1,21 +1,16 @@
 import gc
-import threading
 from tkinter import ttk
 import os
 import tkinter as tk
-import numpy as np
 
 from matplotlib import pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.gridspec import GridSpec
 
 from utils.information_parser import get_dynamic_response_config, get_search_algorithm_config, get_problem_config, \
     get_all_dynamic_strategy, get_all_search_algorithm, get_all_problem, find_match_response_strategy, \
     find_match_problem, find_match_search_algorithm
-from utils.run_executor import draw_chart, run_in_test_mode, delete_state_in_test_mode, listen_pipe, canvas_draw
+from utils.run_executor import draw_chart, run_in_test_mode, delete_state_in_test_mode
 from views.common.GlobalVar import global_vars
 from utils.result_io import load_test_module_information_results
-from plots.test_module.draw_population import draw_IGD_curve, draw_PF, draw_selected_chart
 
 # Create a function to update the StringVars when an item is selected
 def on_dynamic_select(tv_dynamic):
@@ -193,7 +188,6 @@ def clear_canvas():
         del global_vars['test_module']['ax']
 
     # 强制垃圾回收
-    import gc
     gc.collect()
 
 def get_result_files():
@@ -303,6 +297,18 @@ def update_result_display(scale, result_data, param_text, metric_value):
     
     param_text.configure(state='disabled')
 
+
+def build_replay_timeline(runtime_populations):
+    """Flatten runtime snapshots into a stable evaluation-ordered timeline."""
+    timeline = []
+    for environment_key, environment_data in runtime_populations.items():
+        for evaluation_key, information in environment_data.items():
+            timeline.append(
+                (int(evaluation_key), int(environment_key), information)
+            )
+    return sorted(timeline, key=lambda item: (item[0], item[1]))
+
+
 def update_progress_control(scale, current_label, total_label):
     """更新进度控制组件
     
@@ -335,20 +341,19 @@ def update_progress_control(scale, current_label, total_label):
         return
     
     try:
-        # 获取最后一个时间点的最大评估次数
-        last_time = max(runtime_populations.keys())
-        last_evaluations = max(runtime_populations[last_time].keys())
-        total_changes = last_evaluations
-        
-        # 获取当前变化次数
-        current_change = 0
+        timeline = build_replay_timeline(runtime_populations)
+        if not timeline:
+            raise ValueError("运行记录中没有可回放的快照")
+        first_evaluation = timeline[0][0]
+        last_evaluation = timeline[-1][0]
         
         # 更新进度条
-        scale.configure(from_=0, to=total_changes)
+        scale.configure(from_=first_evaluation, to=last_evaluation)
+        scale.set(first_evaluation)
         
         # 更新标签
-        current_label.config(text=f"Current Evaluation: {current_change}")
-        total_label.config(text=f"Total Evaluation: {total_changes}")
+        current_label.config(text=f"Current Evaluation: {first_evaluation}")
+        total_label.config(text=f"Total Evaluation: {last_evaluation}")
         
     except Exception as e:
         print(f"更新进度控制时出错: {e}")
@@ -379,32 +384,13 @@ def on_scale_change(val, current_label, total_label):
         if not runtime_populations:
             return
             
-        # 获取所有环境的数据
-        all_time_points = []
-        for env_data in runtime_populations.values():
-            all_time_points.extend(map(int, env_data.keys()))
-        
-        # 去重并排序
-        time_points = sorted(set(all_time_points))
-        
-        # 找到最接近的时间点
-        closest_time = None
-        min_diff = float('inf')
-        
-        for time_point in time_points:
-            diff = abs(time_point - current_eval)
-            if diff < min_diff:
-                min_diff = diff
-                closest_time = time_point
-        
-        if closest_time is not None:
-            # 获取所有环境在最近时间点的种群数据
-            population = None
-            for env_data in runtime_populations.values():
-                if closest_time in env_data:
-                    population = env_data[closest_time]
-
-            draw_chart(population)
+        timeline = build_replay_timeline(runtime_populations)
+        if timeline:
+            _, _, information = min(
+                timeline,
+                key=lambda item: (abs(item[0] - current_eval), item[0], item[1]),
+            )
+            draw_chart(information)
 
 
     except Exception as e:

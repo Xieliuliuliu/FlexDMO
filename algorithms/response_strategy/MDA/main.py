@@ -19,7 +19,15 @@ class MDA(ResponseStrategy):
 
         if self.D is None:
             # 初始化检测器
-            self.D = Population(xl=problem.xl, xu=problem.xu, individuals=[ind.copy() for ind in population.individuals[:int(0.1*N)]])
+            detector_count = max(1, int(0.1 * N))
+            self.D = Population(
+                xl=problem.xl,
+                xu=problem.xu,
+                individuals=[
+                    ind.copy()
+                    for ind in population.individuals[:detector_count]
+                ],
+            )
 
         # 此处执行共有步骤：存档
         Ht = self.D.get_objective_matrix() # 直接获取，获取的是更新前的obj，即上一时刻obj
@@ -215,7 +223,7 @@ def u_test_based_adjustment(O, G, problem):
     adjusted_matrix = np.clip(adjusted_matrix, problem.xl, problem.xu)
     # 更新解集中的个体值
     for idx, ind in enumerate(O.individuals):
-        ind.values = adjusted_matrix[idx].copy()
+        ind.X = adjusted_matrix[idx].copy()
     return O
 
 def mahalanobis_distance(H1, H2):
