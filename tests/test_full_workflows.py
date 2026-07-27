@@ -6,12 +6,38 @@ from unittest.mock import patch
 
 from openpyxl import load_workbook
 
+from algorithms.response_strategy.DIP.main import DIP
+from algorithms.search_algorithm.MOEAD.main import MOEAD
 from algorithms.search_algorithm.NSGA2.main import NSGA2
 from problems.benchmark.CDP1.main import CDP1
 from results_output.MIGD_table.main import find_first_and_second, run as build_migd_table
 
 
 class DynamicResponseWorkflowTests(unittest.TestCase):
+    def test_dip_moead_full_population_reaches_first_prediction_environment(self):
+        problem = CDP1(
+            decision_num=10,
+            n=10,
+            tau=10,
+            solution_num=100,
+            total_evaluate_time=3,
+        )
+        algorithm = MOEAD(
+            seed=1,
+            neighbor_size=20,
+            delta=0.9,
+            max_replacements=2,
+            differential_weight=0.5,
+            proM=1.0,
+            disM=20,
+        )
+
+        algorithm.optimize(problem, DIP())
+
+        self.assertTrue(problem.is_ended())
+        self.assertEqual(problem.t, 2)
+        self.assertEqual(list(algorithm.history["runtime"]), [0, 1, 2])
+
     def test_every_response_strategy_handles_three_environments(self):
         strategy_names = ("DIP", "MDA", "MDP", "NoResponse", "RNN")
         for strategy_name in strategy_names:

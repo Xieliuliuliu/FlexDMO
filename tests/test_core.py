@@ -5,6 +5,7 @@ import numpy as np
 from components.Population import Population
 from utils.evolution_tools import (
     crowd_selection,
+    domination_matrix,
     fast_non_dominated_sort,
     quick_non_dominate_sort,
 )
@@ -12,6 +13,27 @@ from utils.metrics import calculate_HV, calculate_IGD
 
 
 class EvolutionToolsTests(unittest.TestCase):
+    def test_tiny_feasible_violations_do_not_form_a_dominance_cycle(self):
+        objectives = np.array([[1.0, 1.0], [0.0, 0.0]])
+        violations = np.array([0.0, 5e-13])
+
+        relation = domination_matrix(objectives, violations)
+        fronts = fast_non_dominated_sort(objectives, violations)
+
+        self.assertFalse(relation[0, 1])
+        self.assertTrue(relation[1, 0])
+        np.testing.assert_array_equal(fronts[0], np.array([1]))
+        np.testing.assert_array_equal(fronts[1], np.array([0]))
+
+    def test_feasible_solution_dominates_an_infeasible_solution(self):
+        objectives = np.array([[10.0, 10.0], [0.0, 0.0]])
+        violations = np.array([0.0, 1e-10])
+
+        relation = domination_matrix(objectives, violations)
+
+        self.assertTrue(relation[0, 1])
+        self.assertFalse(relation[1, 0])
+
     def test_fast_non_dominated_sort_assigns_expected_fronts(self):
         objectives = np.array([
             [1.0, 1.0],

@@ -32,15 +32,22 @@ def domination_matrix(
     strictly_less = np.any(objectives[:, None] < objectives[None, :], axis=2)
     pareto = less_or_equal & strictly_less
 
+    feasible = violations <= 1e-12
+    feasible_rows = feasible[:, None]
+    feasible_columns = feasible[None, :]
+    both_feasible = feasible_rows & feasible_columns
+    both_infeasible = ~feasible_rows & ~feasible_columns
+    feasible_over_infeasible = feasible_rows & ~feasible_columns
     lower_violation = violations[:, None] < violations[None, :]
-    equal_violation = np.isclose(
-        violations[:, None], violations[None, :], rtol=1e-12, atol=1e-12
+
+    # Deb's constraint-domination cases must stay disjoint. Comparing tiny
+    # violation differences between two feasible solutions can otherwise
+    # create mutual-dominance cycles.
+    domination = (
+        feasible_over_infeasible
+        | (both_infeasible & lower_violation)
+        | (both_feasible & pareto)
     )
-    both_feasible = (
-        (violations[:, None] <= 1e-12)
-        & (violations[None, :] <= 1e-12)
-    )
-    domination = lower_violation | (equal_violation & both_feasible & pareto)
     np.fill_diagonal(domination, False)
     return domination
 
@@ -70,6 +77,11 @@ def fast_non_dominated_sort(
     while np.any(remaining_mask):
         # 当前前沿：remaining中未被支配的个体
         current_front = np.where(remaining_mask & (dominated_counts == 0))[0]
+        if current_front.size == 0:
+            raise RuntimeError(
+                "Constraint-domination graph contains a cycle; "
+                "non-dominated sorting cannot continue."
+            )
         fronts.append(current_front)
 
         # 更新remaining_mask
