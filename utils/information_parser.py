@@ -102,13 +102,25 @@ def get_all_problem():
                     # 假设config文件是JSON格式，读取文件内容
                     config_data = _read_json(config_path)
 
-                    # 获取name信息
                     name = config_data.get("name")
+                    if not name:
+                        raise ValueError("info.json 缺少 name")
 
-                    # 将信息添加到列表
                     problems.append({
                         "folder_name": folder_path,
                         "name": name,
+                        "category": config_data.get(
+                            "category",
+                            "Unconstrained",
+                        ),
+                        "constraints": int(
+                            config_data.get("constraints", 0)
+                        ),
+                        "difficulty": config_data.get("difficulty", ""),
+                        "description": config_data.get(
+                            "description",
+                            "动态多目标测试问题",
+                        ),
                     })
                 except Exception as e:
                     print(f"Error reading config for {folder_name}: {e}")

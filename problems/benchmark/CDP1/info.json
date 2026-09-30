@@ -1,3 +1,7 @@
 {
-  "name": "CDP1"
+  "name": "CDP1",
+  "category": "Constrained",
+  "constraints": 1,
+  "difficulty": "Moving lower boundary",
+  "description": "动态左侧边界：可行前沿随环境在目标空间中伸缩。"
 }

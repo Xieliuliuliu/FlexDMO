@@ -1,0 +1,7 @@
+{
+  "name": "CDP5",
+  "category": "Constrained",
+  "constraints": 1,
+  "difficulty": "Moving nonlinear obstacle",
+  "description": "动态圆形障碍：目标空间中的非线性不可行域随环境移动。"
+}

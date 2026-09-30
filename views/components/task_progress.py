@@ -1,6 +1,7 @@
 import tkinter as tk
 import threading
 from tkinter import ttk
+from utils.ui_dispatch import dispatch_ui
 
 class TaskProgress(ttk.Frame):
     """任务进度条组件"""
@@ -83,7 +84,7 @@ class TaskProgress(ttk.Frame):
         if threading.current_thread() is threading.main_thread():
             self.progress['value'] = value
         else:
-            self.after(0, lambda: self.progress.configure(value=value))
+            dispatch_ui(lambda: self.progress.configure(value=value) if self.progress.winfo_exists() else None)
     
     def update_status(self, status):
         """更新状态文本
@@ -94,7 +95,7 @@ class TaskProgress(ttk.Frame):
         if threading.current_thread() is threading.main_thread():
             self.status_var.set(status)
         else:
-            self.after(0, lambda: self.status_var.set(status))
+            dispatch_ui(lambda: self.status_var.set(status) if self.winfo_exists() else None)
     
     def destroy(self):            
         """销毁任务卡片，清理所有资源"""

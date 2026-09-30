@@ -10,6 +10,7 @@ from views.common.GlobalVar import global_vars
 from utils.information_parser import get_dynamic_response_config, get_search_algorithm_config, get_problem_config
 from views.components.collapsible_frame import CollapsibleFrame
 from views.components.task_progress import TaskProgress
+from views.test_module.test_module_handler import format_parameter_label
 
 def update_label(fill_frame, config_type, config):
     """更新标签内容"""
@@ -32,15 +33,33 @@ def update_label(fill_frame, config_type, config):
         # 创建参数容器
         param_frame = ttk.Frame(content_frame)
         param_frame.pack(fill="x", pady=2)
+        param_frame.grid_columnconfigure(0, weight=1)
         
         # 创建标签
-        param_label = ttk.Label(param_frame, text=f"{param}: ", font=("Arial", 10), anchor="w")
-        param_label.pack(side="left", fill="x", padx=1, expand=True)
+        param_label = ttk.Label(
+            param_frame,
+            text=f"{format_parameter_label(param)}: ",
+            font=("Arial", 10),
+            anchor="w",
+            justify="left",
+            wraplength=145,
+        )
+        param_label.grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            padx=(1, 4),
+        )
         
         # 创建 Entry 控件
-        param_entry = ttk.Entry(param_frame)
+        param_entry = ttk.Entry(param_frame, width=9)
         param_entry.insert(0, default_value)  # 设置默认值
-        param_entry.pack(side="left", fill="x", padx=5)
+        param_entry.grid(
+            row=0,
+            column=1,
+            sticky="e",
+            padx=(0, 5),
+        )
         
         # 设置事件监听，实时获取用户修改的配置
         def on_entry_change(event, param=param, entry=param_entry):

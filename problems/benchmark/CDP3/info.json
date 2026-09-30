@@ -1,0 +1,7 @@
+{
+  "name": "CDP3",
+  "category": "Constrained",
+  "constraints": 2,
+  "difficulty": "Moving feasible window",
+  "description": "动态可行窗口：两个边界共同压缩并移动可行前沿。"
+}

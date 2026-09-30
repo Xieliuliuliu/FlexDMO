@@ -39,7 +39,15 @@ class DynamicResponseWorkflowTests(unittest.TestCase):
         self.assertEqual(list(algorithm.history["runtime"]), [0, 1, 2])
 
     def test_every_response_strategy_handles_three_environments(self):
-        strategy_names = ("DIP", "MDA", "MDP", "NoResponse", "RNN")
+        strategy_names = (
+            "DIP",
+            "LRDMOEA",
+            "MDA",
+            "MDP",
+            "NoResponse",
+            "PSCA",
+            "RNN",
+        )
         for strategy_name in strategy_names:
             with self.subTest(strategy=strategy_name):
                 strategy_module = importlib.import_module(

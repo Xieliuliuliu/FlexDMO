@@ -1,0 +1,7 @@
+{
+  "name": "CDP2",
+  "category": "Constrained",
+  "constraints": 1,
+  "difficulty": "Moving upper boundary",
+  "description": "动态右侧边界：可行前沿随环境在目标空间中伸缩。"
+}

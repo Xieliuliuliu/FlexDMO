@@ -1,0 +1,6 @@
+{
+  "cluster_num": 12,
+  "weak_learners": 10,
+  "random_multiplier": 20,
+  "history_length": 50
+}

@@ -2,15 +2,183 @@ import gc
 from tkinter import ttk
 import os
 import tkinter as tk
+from tkinter import messagebox, filedialog
+import math
 
 from matplotlib import pyplot as plt
 
 from utils.information_parser import get_dynamic_response_config, get_search_algorithm_config, get_problem_config, \
     get_all_dynamic_strategy, get_all_search_algorithm, get_all_problem, find_match_response_strategy, \
     find_match_problem, find_match_search_algorithm
-from utils.run_executor import draw_chart, run_in_test_mode, delete_state_in_test_mode
+from utils.run_executor import (
+    delete_state_in_test_mode,
+    draw_chart,
+    run_in_test_mode,
+    stop_live_chart_pump,
+)
 from views.common.GlobalVar import global_vars
 from utils.result_io import load_test_module_information_results
+from utils.result_io import save_test_module_information_results
+from utils.test_runtime import test_run_active, set_run_status
+
+
+PARAMETER_LABELS = {
+    "decision_num": "决策变量数",
+    "n": "环境变化强度",
+    "tau": "变化间隔（代）",
+    "total_evaluate_time": "环境总数",
+    "solution_num": "种群规模",
+    "neighbor_size": "邻域大小",
+    "max_replacements": "最大替换数量",
+    "differential_weight": "差分权重",
+    "replacement_rate": "种群替换比例",
+    "mutation_probability": "变异概率",
+    "distribution_index": "变异分布指数",
+    "ar_order": "自回归阶数",
+    "history_length": "历史记录长度",
+    "cluster_num": "聚类数量",
+    "weak_learners": "弱学习器数量",
+    "random_multiplier": "候选种群倍数",
+    "covariance_regularization": "协方差正则系数",
+    "key_points": "预测关键点数量",
+    "regularization": "回归正则系数",
+    "predicted_fraction": "预测个体比例",
+    "mutation_fraction": "变异个体比例",
+    "noise_scale": "采样噪声强度",
+    "seed": "随机种子",
+    "delta": "邻域选择概率",
+    "proM": "变异概率",
+    "disM": "变异分布指数",
+    "proC": "交叉概率",
+    "disC": "交叉分布指数",
+    "K": "局部模型数量",
+    "u": "训练样本数量",
+    "hidden_size": "隐藏层大小",
+    "dropout": "随机失活比例",
+    "lr": "学习率",
+}
+
+
+def format_parameter_label(parameter):
+    friendly = PARAMETER_LABELS.get(parameter)
+    return friendly if friendly else parameter
+
+
+def validate_runtime_config(runtime_config):
+    """Return actionable validation messages before a process is started."""
+    errors = []
+    positive_parameters = {
+        "decision_num",
+        "n",
+        "tau",
+        "total_evaluate_time",
+        "solution_num",
+        "neighbor_size",
+        "max_replacements",
+        "hidden_size",
+        "u",
+        "disM",
+        "disC",
+        "K",
+        "lr",
+        "distribution_index",
+        "ar_order",
+        "history_length",
+        "cluster_num",
+        "weak_learners",
+        "random_multiplier",
+        "covariance_regularization",
+        "key_points",
+        "regularization",
+    }
+    probability_parameters = {
+        "delta",
+        "dropout",
+        "proM",
+        "proC",
+        "predicted_fraction",
+        "mutation_fraction",
+    }
+    integer_parameters = {
+        "ar_order",
+        "history_length",
+        "cluster_num",
+        "weak_learners",
+        "random_multiplier",
+        "key_points",
+    }
+    positive_probability_parameters = {
+        "replacement_rate",
+        "mutation_probability",
+    }
+
+    for section_name, parameters in runtime_config.items():
+        for parameter, raw_value in parameters.items():
+            try:
+                value = float(raw_value)
+            except (TypeError, ValueError):
+                errors.append(f"{parameter}: must be a number")
+                continue
+            if not math.isfinite(value):
+                errors.append(f"{parameter}: must be finite")
+            elif parameter in integer_parameters and not value.is_integer():
+                errors.append(f"{parameter}: must be an integer")
+            elif parameter in positive_parameters and value <= 0:
+                errors.append(f"{parameter}: must be greater than 0")
+            elif (
+                parameter in positive_probability_parameters
+                and not 0 < value <= 1
+            ):
+                errors.append(
+                    f"{parameter}: must be greater than 0 and at most 1"
+                )
+            elif parameter in probability_parameters and not 0 <= value <= 1:
+                errors.append(f"{parameter}: must be between 0 and 1")
+
+    dynamic_parameters = runtime_config.get("selected_dynamic", {})
+    try:
+        ar_order = float(dynamic_parameters["ar_order"])
+        history_length = float(dynamic_parameters["history_length"])
+        if (
+            math.isfinite(ar_order)
+            and math.isfinite(history_length)
+            and history_length <= ar_order
+        ):
+            errors.append(
+                "history_length: must be greater than ar_order"
+            )
+    except (KeyError, TypeError, ValueError):
+        pass
+    try:
+        predicted_fraction = float(
+            dynamic_parameters["predicted_fraction"]
+        )
+        mutation_fraction = float(
+            dynamic_parameters["mutation_fraction"]
+        )
+        if (
+            math.isfinite(predicted_fraction)
+            and math.isfinite(mutation_fraction)
+            and predicted_fraction + mutation_fraction > 1
+        ):
+            errors.append(
+                "predicted_fraction + mutation_fraction: "
+                "must not exceed 1"
+            )
+    except (KeyError, TypeError, ValueError):
+        pass
+    try:
+        if float(dynamic_parameters["key_points"]) < 2:
+            errors.append("key_points: must be at least 2")
+    except (KeyError, TypeError, ValueError):
+        pass
+    try:
+        if float(dynamic_parameters["noise_scale"]) < 0:
+            errors.append("noise_scale: must be non-negative")
+    except (KeyError, TypeError, ValueError):
+        pass
+    return errors
+
 
 # Create a function to update the StringVars when an item is selected
 def on_dynamic_select(tv_dynamic):
@@ -32,6 +200,29 @@ def on_problem_select(tv_problem):
     if selected_item:
         selected_value = tv_problem.item(selected_item[0], 'values')[0]  # 获取选中的问题名称
         global_vars['test_module']['selected_problem'].set(selected_value)
+        description_label = global_vars['test_module'].get(
+            'problem_description_label'
+        )
+        if description_label is not None:
+            description_label.config(
+                text=get_problem_summary(selected_value)
+            )
+
+
+def get_problem_summary(problem_name):
+    """Build a compact user-facing summary for the selected problem."""
+    problem = next(
+        (
+            item
+            for item in get_all_problem()
+            if item["name"] == problem_name
+        ),
+        None,
+    )
+    if problem is None:
+        return ""
+    description = problem.get("description", "")
+    return description
 
 def load_dynamic_data():
     """加载Dynamic Strategy算法数据"""
@@ -85,16 +276,34 @@ def update_label(label, fill_frame, config_type):
         # 创建参数容器
         param_frame = ttk.Frame(fill_frame)
         param_frame.pack(fill="x", pady=2)
+        param_frame.grid_columnconfigure(0, weight=1)
 
         # 创建标签
-        param_label = ttk.Label(param_frame, text=f"{param}: ", font=("Arial", 10), anchor="w")
-        param_label.pack(side="left", fill="x", padx=1,expand=True)
+        param_label = ttk.Label(
+            param_frame,
+            text=f"{format_parameter_label(param)}: ",
+            font=("Arial", 10),
+            anchor="w",
+            justify="left",
+            wraplength=145,
+        )
+        param_label.grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            padx=(1, 4),
+        )
 
         
         # 创建 Entry 控件
-        param_entry = ttk.Entry(param_frame)
+        param_entry = ttk.Entry(param_frame, width=9)
         param_entry.insert(0, default_value)  # 设置默认值
-        param_entry.pack(side="left", fill="x", padx=5)
+        param_entry.grid(
+            row=0,
+            column=1,
+            sticky="e",
+            padx=(0, 5),
+        )
         
         # 设置事件监听，实时获取用户修改的配置
         def on_entry_change(event, param=param, entry=param_entry):
@@ -126,36 +335,89 @@ def on_continue_button_click():
     # 获取并打印 problem 相关信息
     problem_name = global_vars['test_module']['selected_problem'].get()  # 获取 selected_problem 的当前值
     # print(f"Selected Problem: {find_match_problem(problem_name)}")
-    run_in_test_mode(
-        find_match_response_strategy(response_strategy),
-        find_match_search_algorithm(search_algorithm),
-        find_match_problem(problem_name),
-        result_to_show,
-        global_vars['test_module']['runtime_config']
-    )
+    runtime_config = global_vars['test_module']['runtime_config']
+    validation_errors = validate_runtime_config(runtime_config)
+    if validation_errors:
+        messagebox.showerror(
+            "Invalid parameters",
+            "Please correct the following values:\n\n"
+            + "\n".join(f"• {error}" for error in validation_errors),
+        )
+        return
+
+    try:
+        run_in_test_mode(
+            find_match_response_strategy(response_strategy),
+            find_match_search_algorithm(search_algorithm),
+            find_match_problem(problem_name),
+            result_to_show,
+            runtime_config
+        )
+    except Exception as error:
+        set_run_status("failed", f"启动失败：{error}")
+        messagebox.showerror("无法启动", str(error))
+        return
+    workspace = global_vars['test_module'].get('workspace')
+    if workspace is not None:
+        workspace.show_panel(2)
 
 
 def on_pause_button_click():
     """处理暂停按钮点击事件"""
     process_entry = global_vars.get('test_module', {})
-    if process_entry and 'process_state' in process_entry and process_entry['process_state'] is not None:
+    if test_run_active() and process_entry.get('process_state') is not None:
         process_entry['process_state'].value = 'pause'
+        set_run_status("paused")
     else:
         print("[主进程] 无 process_state，不执行暂停")
 
 def on_stop_button_click():
     """处理停止按钮点击事件"""
     process_entry = global_vars.get('test_module', {})
-    if process_entry and 'process_state' in process_entry and process_entry['process_state'] is not None:
-        process_entry['process_state'].value = 'stop'
-        delete_state_in_test_mode()
+    if test_run_active():
+        set_run_status("stopped")
+        delete_state_in_test_mode(clear_history=False)
+        scale = process_entry.get('scale')
+        if scale is not None:
+            scale.configure(state='normal')
+            update_progress_control(scale, process_entry['current_label'],
+                                    process_entry['total_label'],
+                                    start_at_end=True, render_selected=True)
+        save_result = process_entry.get('save_result')
+        if process_entry.get('runtime_populations') and save_result is not None and save_result.get():
+            try:
+                path = save_test_module_information_results()
+                set_run_status('stopped', f"部分结果已保存：{path}")
+            except Exception as error:
+                set_run_status('stopped', f"自动保存失败：{error}；请手动保存")
     else:
         print("[主进程] 无 process_state，不执行终止")
+
+
+def on_save_button_click():
+    """Save completed or terminated data even if auto-save was not enabled."""
+    if test_run_active():
+        messagebox.showinfo("保存结果", "请等待运行完成或终止后再保存结果。")
+        return
+    if not global_vars['test_module'].get('runtime_populations'):
+        messagebox.showinfo("保存结果", "还没有可保存的数据，请先运行或加载结果。")
+        return
+    directory = filedialog.askdirectory(title="选择结果保存目录", initialdir="results")
+    if not directory:
+        return
+    try:
+        path = save_test_module_information_results(directory)
+        set_run_status(global_vars['test_module'].get('run_status', 'completed'),
+                       f"结果已保存：{path}")
+        messagebox.showinfo("保存成功", path)
+    except Exception as error:
+        messagebox.showerror("保存失败", str(error))
 
 
 def clear_canvas():
     """彻底释放 Tkinter Canvas + Matplotlib Figure"""
 
+    stop_live_chart_pump()
     canvas = global_vars['test_module'].get('canvas')
     if canvas:
         try:
@@ -237,6 +499,9 @@ def load_selected_result(selected_result):
     """
     if not selected_result:
         return None
+    if test_run_active():
+        messagebox.showinfo("暂时无法加载", "优化仍在运行或暂停中，请先终止或等待完成。")
+        return None
         
     # 如果输入已经是完整的文件路径，直接使用
     file_path = selected_result
@@ -249,9 +514,12 @@ def load_selected_result(selected_result):
             global_vars['test_module'] = {}
         global_vars['test_module']['runtime_populations'] = result['runtime_populations']
         global_vars['test_module']['runtime_historical_config'] = result['settings']
+        global_vars['test_module'].pop('pending_live_information', None)
+        set_run_status("replay")
         print(f"成功加载结果: {selected_result}")
     else:
         print(f"加载结果失败: {selected_result}")
+        set_run_status("failed", "结果文件无法加载，请检查文件格式及所需的问题组件")
         
     return result
 
@@ -309,7 +577,13 @@ def build_replay_timeline(runtime_populations):
     return sorted(timeline, key=lambda item: (item[0], item[1]))
 
 
-def update_progress_control(scale, current_label, total_label):
+def update_progress_control(
+    scale,
+    current_label,
+    total_label,
+    start_at_end=False,
+    render_selected=False,
+):
     """更新进度控制组件
     
     Args:
@@ -324,43 +598,54 @@ def update_progress_control(scale, current_label, total_label):
     if 'test_module' not in global_vars:
         scale.configure(from_=0, to=100)
         scale.set(0)
-        current_label.config(text="Current Evaluation: 0")
-        total_label.config(text="Total Evaluation: 0")
+        current_label.config(text="当前评估次数： 0")
+        total_label.config(text="总评估次数： 0")
         return
     
-    # 获取运行时数据
-    runtime_populations = global_vars['test_module'].get('runtime_populations', {})
-    runtime_config = global_vars['test_module'].get('runtime_historical_config', {})
+    test_state = global_vars['test_module']
+    runtime_populations = test_state.get('runtime_populations', {})
     
     # 如果没有数据，显示默认值
-    if not runtime_config or not runtime_populations:
+    if not runtime_populations:
+        test_state.pop('replay_timeline', None)
         scale.configure(from_=0, to=100)
         scale.set(0)
-        current_label.config(text="Current Evaluation: 0")
-        total_label.config(text="Total Evaluation: 0")
+        current_label.config(text="当前评估次数： 0")
+        total_label.config(text="总评估次数： 0")
         return
     
     try:
         timeline = build_replay_timeline(runtime_populations)
         if not timeline:
             raise ValueError("运行记录中没有可回放的快照")
-        first_evaluation = timeline[0][0]
+        test_state['replay_timeline'] = timeline
+
+        selected_index = len(timeline) - 1 if start_at_end else 0
+        selected_evaluation, _, selected_information = timeline[selected_index]
         last_evaluation = timeline[-1][0]
         
-        # 更新进度条
-        scale.configure(from_=first_evaluation, to=last_evaluation)
-        scale.set(first_evaluation)
+        # 滑块使用连续的快照序号，避免稀疏评估次数造成大片无变化区域。
+        scale.configure(from_=0, to=max(0, len(timeline) - 1))
+        test_state['suppress_replay_callback'] = True
+        try:
+            scale.set(selected_index)
+        finally:
+            test_state.pop('suppress_replay_callback', None)
         
         # 更新标签
-        current_label.config(text=f"Current Evaluation: {first_evaluation}")
-        total_label.config(text=f"Total Evaluation: {last_evaluation}")
+        current_label.config(text=f"当前评估次数： {selected_evaluation}")
+        total_label.config(text=f"总评估次数： {last_evaluation}")
+
+        if render_selected:
+            draw_chart(selected_information)
         
     except Exception as e:
         print(f"更新进度控制时出错: {e}")
+        test_state.pop('replay_timeline', None)
         scale.configure(from_=0, to=100)
         scale.set(0)
-        current_label.config(text="Current Evaluation: 0")
-        total_label.config(text="Total Evaluation: 0")
+        current_label.config(text="当前评估次数： 0")
+        total_label.config(text="总评估次数： 0")
 
 def on_scale_change(val, current_label, total_label):
     """处理进度条变化事件
@@ -371,25 +656,28 @@ def on_scale_change(val, current_label, total_label):
         total_label: 总变化次数标签
     """
     try:
-        # 将进度值转换为浮点数
-        current_eval = float(val)
-        
-        # 更新标签
-        current_label.config(text=f"Current Evaluation: {current_eval:.0f}")
-        
-        # 获取运行时数据
-        runtime_populations = global_vars['test_module'].get('runtime_populations', {})
+        test_state = global_vars['test_module']
+        if test_state.get('suppress_replay_callback'):
+            return
+
+        runtime_populations = test_state.get('runtime_populations', {})
         
         # 如果是第一次初始化，直接返回
         if not runtime_populations:
             return
             
-        timeline = build_replay_timeline(runtime_populations)
+        timeline = test_state.get('replay_timeline')
+        if not timeline:
+            timeline = build_replay_timeline(runtime_populations)
+            test_state['replay_timeline'] = timeline
+
         if timeline:
-            _, _, information = min(
-                timeline,
-                key=lambda item: (abs(item[0] - current_eval), item[0], item[1]),
+            snapshot_index = min(
+                max(int(round(float(val))), 0),
+                len(timeline) - 1,
             )
+            evaluation, _, information = timeline[snapshot_index]
+            current_label.config(text=f"当前评估次数： {evaluation}")
             draw_chart(information)
 
 
@@ -458,6 +746,9 @@ def on_load_button_click(file_path_var, metric_var, metric_value, param_text):
         # 调用 on_scale_change 更新图表
         if scale and current_label and total_label:
             on_scale_change(scale.get(), current_label, total_label)
+        workspace = global_vars['test_module'].get('workspace')
+        if workspace is not None:
+            workspace.show_panel(2)
 
 def on_metric_change(event, file_path_var, metric_var, metric_value):
     """处理指标选择变化事件

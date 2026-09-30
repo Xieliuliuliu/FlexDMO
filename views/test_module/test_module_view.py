@@ -7,23 +7,28 @@ import os
 from matplotlib import pyplot as plt, gridspec
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.gridspec import GridSpec
+from matplotlib.figure import Figure
 
 from views.common.GlobalVar import global_vars
 from views.common.common_components import create_column, create_separator
+from views.common.responsive_workspace import ResponsiveWorkspace, scrollable_content
 from views.components.collapsible_frame import CollapsibleFrame
 from views.test_module.test_module_handler import (
     on_dynamic_select, on_search_select, load_dynamic_data,
     load_search_data, on_problem_select, load_problem_data,
-    update_label, on_continue_button_click, on_pause_button_click,
-    on_stop_button_click, update_progress_control,
+    get_problem_summary, update_label,
+    on_continue_button_click, on_pause_button_click,
+    on_stop_button_click, on_save_button_click, update_progress_control,
     on_scale_change, load_selected_result, update_result_display
 )
 from views.components.collapsible_listbox import CollapsibleListbox
+from utils.run_executor import start_live_chart_pump
+from utils.test_runtime import set_run_status
 
 
 def create_dynamic_strategy_section(frame):
     """创建动态策略部分"""
-    label_dynamic = ttk.Label(frame, text="Dynamic Strategy", font=("Arial", 12, "bold"), style='success')
+    label_dynamic = ttk.Label(frame, text="动态响应策略", font=("Arial", 12, "bold"), style='success')
     label_dynamic.pack(anchor="w", pady=10)
 
     # Create a Frame to hold the Treeview and Scrollbar for Dynamic Strategy
@@ -34,16 +39,20 @@ def create_dynamic_strategy_section(frame):
     dynamic_data = load_dynamic_data()
 
     # Create a Treeview widget for Dynamic Strategy algorithms
-    tv_dynamic = ttk.Treeview(dynamic_frame, show='headings', height=8)
+    tv_dynamic = ttk.Treeview(
+        dynamic_frame,
+        show='headings',
+        height=max(3, min(8, len(dynamic_data))),
+    )
     tv_dynamic.configure(columns=('name', 'year'))
 
     # Configure columns
     tv_dynamic.column('name', width=150, anchor='w', stretch=True)
-    tv_dynamic.column('year', width=100, anchor='w', stretch=True)
+    tv_dynamic.column('year', width=60, anchor='center', stretch=False)
 
     # Set column headings
-    tv_dynamic.heading('name', text='Algorithm Name', anchor='w')
-    tv_dynamic.heading('year', text='Year', anchor='w')
+    tv_dynamic.heading('name', text='算法名称', anchor='w')
+    tv_dynamic.heading('year', text='年份', anchor='w')
 
     # 插入数据
     for data in dynamic_data:
@@ -65,7 +74,7 @@ def create_dynamic_strategy_section(frame):
 
 def create_search_algorithm_section(frame):
     """创建搜索算法部分"""
-    label_search = ttk.Label(frame, text="Search Algorithm", font=("Arial", 12, "bold"), style='info')
+    label_search = ttk.Label(frame, text="搜索算法", font=("Arial", 12, "bold"), style='info')
     label_search.pack(anchor="w", pady=10)
 
     # Create a Frame to hold the Treeview and Scrollbar for Search Algorithm
@@ -76,16 +85,20 @@ def create_search_algorithm_section(frame):
     search_data = load_search_data()
 
     # Create a Treeview widget for Search Algorithms
-    tv_search = ttk.Treeview(search_frame, show='headings', height=8)
+    tv_search = ttk.Treeview(
+        search_frame,
+        show='headings',
+        height=max(3, min(8, len(search_data))),
+    )
     tv_search.configure(columns=('name', 'year'))
 
     # Configure columns
     tv_search.column('name', width=150, anchor='w', stretch=True)
-    tv_search.column('year', width=100, anchor='w', stretch=True)
+    tv_search.column('year', width=60, anchor='center', stretch=False)
 
     # Set column headings
-    tv_search.heading('name', text='Algorithm Name', anchor='w')
-    tv_search.heading('year', text='Year', anchor='w')
+    tv_search.heading('name', text='算法名称', anchor='w')
+    tv_search.heading('year', text='年份', anchor='w')
 
     # 插入数据
     for data in search_data:
@@ -107,7 +120,7 @@ def create_search_algorithm_section(frame):
 
 def create_problem_selection_section(frame):
     """创建问题选择部分"""
-    label_problem = ttk.Label(frame, text="Select Problem", font=("Arial", 12, "bold"), style='warning')
+    label_problem = ttk.Label(frame, text="测试问题", font=("Arial", 12, "bold"), style='warning')
     label_problem.pack(anchor="w", pady=10)
 
     # Create a Frame to hold the Treeview and Scrollbar for Problem Selection
@@ -118,19 +131,47 @@ def create_problem_selection_section(frame):
     problem_data = load_problem_data()
 
     # Create a Treeview widget for Problem Selection
-    tv_problem = ttk.Treeview(problem_frame, show='headings', height=8)
-    tv_problem.configure(columns=('name',))
+    tv_problem = ttk.Treeview(
+        problem_frame,
+        show='headings',
+        height=max(5, min(8, len(problem_data))),
+    )
+    tv_problem.configure(columns=('name', 'category', 'constraints'))
 
     # Configure columns
-    tv_problem.column('name', width=150, anchor='w', stretch=True)
+    tv_problem.column('name', width=90, anchor='w', stretch=True)
+    tv_problem.column(
+        'category',
+        width=90,
+        minwidth=90,
+        anchor='center',
+        stretch=False,
+    )
+    tv_problem.column(
+        'constraints',
+        width=62,
+        minwidth=62,
+        anchor='center',
+        stretch=False,
+    )
 
     # Set column headings
-    tv_problem.heading('name', text='Problem Name', anchor='w')
+    tv_problem.heading('name', text='问题', anchor='w')
+    tv_problem.heading('category', text='约束类型', anchor='center')
+    tv_problem.heading('constraints', text='约束数', anchor='center')
 
     # 插入数据
     for data in problem_data:
-        folder, name = data.values()
-        tv_problem.insert('', 'end', values=(name), iid=folder)
+        tv_problem.insert(
+            '',
+            'end',
+            values=(
+                data["name"],
+                "有约束" if data["constraints"] else "无约束",
+                data["constraints"],
+            ),
+            iid=data["folder_name"],
+        )
 
     # Create scrollbar for Treeview (Problem Selection)
     scrollbar_problem = ttk.Scrollbar(problem_frame, orient='vertical', command=tv_problem.yview)
@@ -143,11 +184,13 @@ def create_problem_selection_section(frame):
     # Set the default selection to the first item
     tv_problem.selection_set(tv_problem.get_children()[0])
 
+    global_vars['test_module'].pop('problem_description_label', None)
+
     return tv_problem
 
 def create_algorithm_selection(frame):
     """创建完整的算法选择区域"""
-    label_algo = ttk.Label(frame, text="Algorithm selection", font=("Arial", 14, "bold"))
+    label_algo = ttk.Label(frame, text="算法与问题", font=("Arial", 12, "bold"))
     label_algo.pack(pady=10)  # Span across two columns in the grid, simply use padding with pack
 
     # 创建并显示各个部分
@@ -177,7 +220,7 @@ def create_algorithm_selection(frame):
 
 def create_parameter_settings(frame):
     """创建算法选择区域"""
-    label_dynamic_response = ttk.Label(frame, text="Parameter settings", font=("Arial", 14, "bold"))
+    label_dynamic_response = ttk.Label(frame, text="参数设置", font=("Arial", 12, "bold"))
     label_dynamic_response.pack(pady=10)  # Span across two columns in the grid, simply use padding with pack
 
     # 获取 selected_dynamic 的值
@@ -227,8 +270,8 @@ def create_result_display(frame):
     """创建图表显示区域（一行两列底部控制面板）"""
     # ==================== 顶部标题 ====================
     label_result = ttk.Label(frame,
-                           text="Result Display",
-                           font=("Arial", 14, "bold"))
+                           text="运行与回放",
+                           font=("Arial", 12, "bold"))
     label_result.pack(pady=10)
 
     # ==================== 主容器框架 ====================
@@ -237,10 +280,12 @@ def create_result_display(frame):
 
     # 1. 顶部控制栏（结果指标选择）
     top_frame = ttk.Frame(result_frame)
-    top_frame.pack(side="top", fill="x", pady=(0, 10))
+    top_frame.grid(row=0, column=0, sticky='ew', pady=(0, 6))
+    result_frame.columnconfigure(0, weight=1)
+    result_frame.rowconfigure(1, weight=1)
 
     # 创建可折叠的Listbox
-    result_listbox = CollapsibleListbox(top_frame, "Result Indicator", style='primary')
+    result_listbox = CollapsibleListbox(top_frame, "显示图表", style='primary')
     result_listbox.pack(side="left", fill='x', expand=True)
     # 从config.json中读取结果指标
     config_path = os.path.join("plots", "test_module", "config.json")
@@ -254,18 +299,26 @@ def create_result_display(frame):
     save_var = tk.BooleanVar(value=False)
     save_checkbox = ttk.Checkbutton(
         top_frame,
-        text="Save Results",
+        text="自动保存",
         variable=save_var,
         style='primary.TCheckbutton'
     )
     save_checkbox.pack(side="left", padx=(10, 0))
+
+    status_label = ttk.Label(result_frame, text="", wraplength=500, anchor='w')
+    status_label.grid(row=1, column=0, sticky='ew', pady=(0, 4))
+    status_label.bind('<Configure>', lambda event: status_label.configure(
+        wraplength=max(100, event.width - 8)))
+    global_vars['test_module']['status_label'] = status_label
+    result_frame.rowconfigure(1, weight=0)
+    result_frame.rowconfigure(2, weight=1)
     
     # 将保存选项添加到全局变量中
     global_vars['test_module']['save_result'] = save_var
 
     # 2. 中间内容区域（仅图表）
     content_frame = ttk.Frame(result_frame)
-    content_frame.pack(fill='both', expand=True)
+    content_frame.grid(row=2, column=0, sticky='nsew')
 
 
     selected_results = []
@@ -291,7 +344,8 @@ def create_result_display(frame):
             fig.clf()
             # 重新创建所需数量的 ax
             for i in range(required_ax_count):
-                fig.add_subplot(required_ax_count, 1, i + 1)
+                ax = fig.add_subplot(required_ax_count, 1, i + 1)
+                ax.tick_params(axis='both', labelsize=9)
             global_vars['test_module']['canvas_version']+=1
             lock.release()
     
@@ -308,11 +362,11 @@ def create_result_display(frame):
     result_listbox.after(100, set_default_selection)
 
     # 图表区域（自适应）
-    fig= plt.figure(figsize=(6, 3))
-    fig.add_subplot(1,1,1)
-
-    # 调整布局
-    fig.tight_layout()
+    # A pyplot figure creates a native macOS manager that doubles its DPI.
+    # Construct the embedded figure directly so Tk owns sizing from the start.
+    fig = Figure(figsize=(6, 3), dpi=100, layout='constrained')
+    ax = fig.add_subplot(1, 1, 1)
+    ax.tick_params(axis='both', labelsize=9)
 
     # 如果已有画布，先销毁旧画布
     if global_vars['test_module'].get('canvas') is not None:
@@ -331,52 +385,61 @@ def create_result_display(frame):
     global_vars['test_module']['canvas'] = canvas
     global_vars['test_module']['canvas_version'] = 0
     global_vars['test_module']['canvas_lock'] = threading.RLock()
+    start_live_chart_pump(canvas.get_tk_widget())
     # 3. 底部控制面板（一行两列布局）
     bottom_frame = ttk.Frame(result_frame)
-    bottom_frame.pack(side="bottom", fill='x', pady=10)
+    bottom_frame.grid(row=3, column=0, sticky='ew', pady=(6, 0))
 
     # ===== 左侧：控制按钮 =====
     left_panel = ttk.LabelFrame(bottom_frame,
-                              text="Controls",
+                              text="运行控制",
                               padding=(10, 10),
                               width=120)  # 固定宽度
-    left_panel.pack(side='left', fill='y', padx=(0, 10))
+    left_panel.pack(side='top', fill='x', pady=(0, 4))
 
     # 垂直排列的按钮
     btn_continue = ttk.Button(
         left_panel,
-        text="▶ Continue",
+        text="开始 / 继续",
         style='info.TButton',
-        width=12,
+        width=10,
         command=on_continue_button_click  # 恢复运行
     )
-    btn_continue.pack(pady=3)
+    btn_continue.pack(side='left', padx=3)
 
     # ⏸ Pause（暂停）
     btn_pause = ttk.Button(
         left_panel,
-        text="⏸ Pause",
+        text="暂停",
         style='warning.TButton',
-        width=12,
+        width=8,
         command=on_pause_button_click  # 暂停运行
     )
-    btn_pause.pack(pady=3)
+    btn_pause.pack(side='left', padx=3)
 
     # Terminate（终止）
     btn_terminate = ttk.Button(
         left_panel,
-        text="⛔ Terminate",
+        text="终止",
         style='danger.TButton',
-        width=12,
+        width=8,
         command=on_stop_button_click  # 强制终止
     )
-    btn_terminate.pack(pady=3)
+    btn_terminate.pack(side='left', padx=3)
+
+    btn_save = ttk.Button(left_panel, text="保存结果", width=8,
+                          command=on_save_button_click)
+    btn_save.pack(side='left', padx=3)
+    global_vars['test_module'].update(pause_button=btn_pause,
+                                      stop_button=btn_terminate,
+                                      manual_save_button=btn_save)
+    set_run_status(global_vars['test_module'].get('run_status', 'idle'))
 
     # ===== 右侧：进度控制 =====
     right_panel = ttk.LabelFrame(bottom_frame,
-                                 text="Progress Control",
+                                 text="回放时间轴",
                                  padding=(10, 10))
-    right_panel.pack(side='left', fill='both', expand=True)
+    right_panel.pack(side='top', fill='x')
 
     # 进度条
     scale = ttk.Scale(
@@ -388,7 +451,7 @@ def create_result_display(frame):
         style='info.Horizontal.TScale',
         state='normal'  # 始终可拖动
     )
-    scale.pack(fill='x', pady=(20, 10))
+    scale.pack(fill='x', pady=(4, 4))
     
     # 保存进度条引用到全局变量
     if 'test_module' not in global_vars:
@@ -400,7 +463,7 @@ def create_result_display(frame):
     scale_labels.pack(fill='x')
 
     # 动态生成刻度标签
-    num_labels = 11  # 刻度标签数量（0, 25, 50, 75, 100）
+    num_labels = 5
     for i in range(num_labels):
         ttk.Label(scale_labels,
                   text=f"{i * (100 // (num_labels - 1))}%",
@@ -409,15 +472,15 @@ def create_result_display(frame):
 
     # 控制标签组
     label_frame = ttk.Frame(right_panel)
-    label_frame.pack(fill='x', pady=(10, 20))
+    label_frame.pack(fill='x', pady=(4, 0))
 
     # 显示当前变化次数的标签
-    current_label = ttk.Label(label_frame, text="Current Change: 0", font=("Arial", 10))
-    current_label.pack(side='left', padx=10)
+    current_label = ttk.Label(label_frame, text="当前评估次数： 0", font=("Arial", 10))
+    current_label.pack(side='top', anchor='w')
 
     # 显示总的变化次数的标签
-    total_label = ttk.Label(label_frame, text="Total Change: 0", font=("Arial", 10))
-    total_label.pack(side='right', padx=10)
+    total_label = ttk.Label(label_frame, text="总评估次数： 0", font=("Arial", 10))
+    total_label.pack(side='top', anchor='w')
 
     # 保存控件引用到全局变量
     global_vars['test_module']['current_label'] = current_label
@@ -432,21 +495,23 @@ def create_result_display(frame):
 
 def create_result_selection(frame):
     label_result = ttk.Label(frame,
-                           text="Result Selection",
-                           font=("Arial", 14, "bold"))
+                           text="历史结果",
+                           font=("Arial", 12, "bold"))
     label_result.pack(pady=10)
     """创建结果选择区域（三行布局）"""
     # 主容器
     selection_frame = ttk.Frame(frame)
-    selection_frame.pack(fill='x', padx=5, pady=5)
+    selection_frame.pack(fill='both', expand=True, padx=5, pady=5)
+    selection_frame.columnconfigure(0, weight=1)
+    selection_frame.rowconfigure(2, weight=1)
 
     # ===== 第一行：算法/问题选择 =====
     row1 = ttk.Frame(selection_frame)
-    row1.pack(fill='x', pady=(0, 5), expand=True)
+    row1.grid(row=0, column=0, sticky='ew', pady=(0, 8))
 
     # 创建文件选择框架
     file_frame = ttk.Frame(row1)
-    file_frame.grid(row=0, column=0, sticky='ew', padx=(0, 5))
+    file_frame.grid(row=0, column=0, columnspan=2, sticky='ew', pady=(0, 4))
     row1.grid_columnconfigure(0, weight=4)  # 文件选择框架占据4份
 
     # 创建文件路径输入框
@@ -470,7 +535,7 @@ def create_result_selection(frame):
 
     select_btn = ttk.Button(
         file_frame, 
-        text="Select File", 
+        text="选择文件",
         command=select_history_file,
         width=10
     )
@@ -478,7 +543,7 @@ def create_result_selection(frame):
 
     # ===== 第二行：指标选择 =====
     row2 = ttk.Frame(selection_frame)
-    row2.pack(fill='x', pady=(0, 5))
+    row2.grid(row=1, column=0, sticky='ew', pady=(0, 8))
 
     # 指标选择下拉框
     metric_var = tk.StringVar()
@@ -510,28 +575,31 @@ def create_result_selection(frame):
 
     load_button = ttk.Button(
         row1,
-        text="Load",
+        text="加载并回放",
         style='info.TButton',
         command=on_load_button_click
     )
-    load_button.grid(row=0, column=1, sticky='ew')
+    load_button.grid(row=1, column=0, columnspan=2, sticky='ew')
     row1.grid_columnconfigure(1, weight=1)  # 按钮占据1份
 
     # ===== 第三行：参数显示 =====
     row3 = ttk.Frame(selection_frame)
-    row3.pack(fill='both', expand=True)
+    row3.grid(row=2, column=0, sticky='nsew')
 
     # 参数文本框
     param_text = tk.Text(
         row3,
-        height=60,
-        width=30,
+        height=8,
+        width=12,
         font=('Courier New', 9),
         wrap='word',
         padx=5,
         pady=5
     )
-    param_text.pack(fill='both', expand=True)
+    scrollbar = ttk.Scrollbar(row3, orient='vertical', command=param_text.yview)
+    param_text.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side='right', fill='y')
+    param_text.pack(side='left', fill='both', expand=True)
 
     # 初始参数内容
     params = """"""
@@ -539,34 +607,11 @@ def create_result_selection(frame):
     param_text.configure(state='disabled')  # 设为只读
 
 def create_test_module_view(frame_main):
-    # 使用grid布局调整列比例为 1:1:2:1
-    frame_main.grid_rowconfigure(0, weight=1)
-    frame_main.grid_columnconfigure(0, weight=1)
-    frame_main.grid_columnconfigure(2, weight=1)
-    frame_main.grid_columnconfigure(4, weight=2)
-    frame_main.grid_columnconfigure(6, weight=1)
-
-    # 第一列：Algorithm selection
-    frame_left = create_column(frame_main, 0)  # 传递列的位置
-    create_algorithm_selection(frame_left)
-
-    # 竖线分隔
-    create_separator(frame_main, 1)
-
-    # 第二列：Parameter setting
-    frame_center_left = create_column(frame_main, 2)
-    create_parameter_settings(frame_center_left)
-
-    # 竖线分隔
-    create_separator(frame_main, 3)
-
-    # 第三列：Result display
-    frame_center_right = create_column(frame_main, 4)
-    create_result_display(frame_center_right)
-
-    # 竖线分隔
-    create_separator(frame_main, 5)
-
-    # 第四列：Result selection
-    frame_right = create_column(frame_main, 6)
-    create_result_selection(frame_right)
+    workspace = ResponsiveWorkspace(frame_main, ("算法与问题", "参数设置", "运行与回放", "历史结果"))
+    global_vars['test_module']['workspace'] = workspace
+    create_algorithm_selection(scrollable_content(workspace.panels[0]))
+    parameter_content = scrollable_content(workspace.panels[1])
+    global_vars['test_module']['parameter_content'] = parameter_content
+    create_parameter_settings(parameter_content)
+    create_result_display(workspace.panels[2])
+    create_result_selection(workspace.panels[3])

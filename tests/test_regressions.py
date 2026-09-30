@@ -231,6 +231,7 @@ class ResultIoRegressionTests(unittest.TestCase):
             "POS": problem.get_pareto_set(),
             "POF": problem.get_pareto_front(),
             "bound": [problem.xl, problem.xu],
+            "objective_constraints": problem.get_objective_constraints(),
             "t": 0,
             "evaluate_times": problem.evaluate_time,
             "population": population,
@@ -258,6 +259,10 @@ class ResultIoRegressionTests(unittest.TestCase):
             self.assertEqual(
                 [ind.feasible for ind in restored_population],
                 [ind.feasible for ind in population],
+            )
+            self.assertEqual(
+                restored["objective_constraints"],
+                problem.get_objective_constraints(),
             )
         finally:
             if original_test_module is None:

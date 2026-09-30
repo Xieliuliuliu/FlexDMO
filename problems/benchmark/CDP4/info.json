@@ -1,0 +1,7 @@
+{
+  "name": "CDP4",
+  "category": "Constrained",
+  "constraints": 1,
+  "difficulty": "Disconnected front",
+  "description": "动态禁区带：移动的不可行区将真实 Pareto 前沿切成两段。"
+}

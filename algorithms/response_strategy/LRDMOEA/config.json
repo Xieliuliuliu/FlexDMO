@@ -1,0 +1,8 @@
+{
+  "key_points": 12,
+  "regularization": 0.001,
+  "predicted_fraction": 0.5,
+  "mutation_fraction": 0.2,
+  "noise_scale": 0.05,
+  "history_length": 20
+}

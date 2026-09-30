@@ -57,3 +57,15 @@ class CDP1(Problem):
         result = np.full((len(x0), self.decision_num), center)
         result[:, 0] = x0
         return result
+
+    def get_objective_constraints(self, t=None):
+        if t is None:
+            t = self.t
+        _, threshold = self._dynamic_state(t)
+        return [
+            {
+                "axis": 0,
+                "operator": ">=",
+                "threshold": float(threshold),
+            }
+        ]

@@ -9,6 +9,7 @@ from views.common.GlobalVar import global_vars
 from components.Population import Population
 from components.Individual import Individual
 from views.components.progress_dialog import ProgressDialog
+from utils.test_runtime import snapshot_history
 
 
 def _save_json_with_numpy(data, file_path):
@@ -104,6 +105,7 @@ def _serialize_runtime_snapshot(information):
         ("POS", "POS"),
         ("POF", "POF"),
         ("bound", "bound"),
+        ("objective_constraints", "objective_constraints"),
         ("t", "t"),
         ("evaluate_times", "evaluate_times"),
     ):
@@ -144,7 +146,7 @@ def save_experiment_module_information_results(history, save_path):
 
 def save_test_module_information_results(save_path="results/test_module/"):
     """保存 test_module 中所有环境的 settings 和各时间点的 population 字符串表示，结构为 settings + information"""
-    runtime_populations = global_vars['test_module']["runtime_populations"]
+    runtime_populations = snapshot_history()
     if not runtime_populations:
         raise ValueError("没有可保存的测试运行数据")
 
@@ -311,6 +313,10 @@ def load_test_module_information_results(file_path):
                     'POS': POS,
                     'POF': POF,
                     'bound': [population.xl, population.xu],
+                    'objective_constraints': pop_data.get(
+                        'objective_constraints',
+                        problem.get_objective_constraints(t),
+                    ),
                     't': t,
                     'evaluate_times': int(time_key)
                 }

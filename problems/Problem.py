@@ -154,6 +154,10 @@ class Problem:
         """
         return self.xl, self.xu  # 默认返回整个搜索空间
 
+    def get_objective_constraints(self, t=None):
+        """返回可用于目标空间背景绘制的轴向约束描述。"""
+        return []
+
     def is_ended(self):
         if self.need_change and self.t+1 >= self.total_change_time:
             return True

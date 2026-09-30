@@ -34,6 +34,7 @@ coverage.xml
 
 # MacOS
 .DS_Store
+._*
 
 # Windows
 Thumbs.db
@@ -53,3 +54,25 @@ Thumbs.db
 .idea/workspace.xml
 
 results/
+
+# Local caches and temporary exports (keep results_output source tracked)
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+htmlcov/
+.coverage.*
+*.tmp
+*.bak
+*~
+
+# Local credentials; keep example configuration available
+.env
+.env.*
+!.env.example
+!.env.sample
+.ssh/
+*_ed25519
+*_rsa
+*.pem
+*.key

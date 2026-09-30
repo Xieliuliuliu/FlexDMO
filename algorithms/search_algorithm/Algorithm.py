@@ -64,6 +64,7 @@ class Algorithm:
                     'POS': problem.get_pareto_set(),
                     "POF": problem.get_pareto_front(),
                     "bound": [problem.xl, problem.xu],
+                    "objective_constraints": problem.get_objective_constraints(),
                     't': problem.t,
                     'evaluate_times': problem.evaluate_time,
                     'population': population

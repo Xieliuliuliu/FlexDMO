@@ -1,0 +1,5 @@
+{
+  "replacement_rate": 0.2,
+  "mutation_probability": 0.1,
+  "distribution_index": 20
+}

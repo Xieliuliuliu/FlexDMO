@@ -1,9 +1,218 @@
 from matplotlib import pyplot as plt
 import numpy as np
 from matplotlib.collections import LineCollection
+from matplotlib.patches import Circle
+from matplotlib.layout_engine import ConstrainedLayoutEngine
 
 from utils.metrics import calculate_IGD
 from views.common.GlobalVar import global_vars
+
+
+def fit_chart_layout(figure):
+    """Lay out the embedded figure, ignoring transient tiny resize frames."""
+    for ax in figure.axes:
+        ax.tick_params(axis='both', labelsize=9)
+    if isinstance(figure.get_layout_engine(), ConstrainedLayoutEngine):
+        return
+    width, height = figure.get_size_inches() * figure.dpi
+    if width >= 250 and height >= 180 * max(1, len(figure.axes)):
+        figure.tight_layout(pad=0.8)
+
+
+def get_feasible_mask(population):
+    """Return a boolean mask aligned with the population matrices."""
+    return np.asarray(
+        [bool(getattr(individual, "feasible", True)) for individual in population],
+        dtype=bool,
+    )
+
+
+def shade_infeasible_region(information, ax):
+    """Shade objective-space regions described by the current problem."""
+    constraints = information.get("objective_constraints", [])
+    original_xlim = ax.get_xlim()
+    original_ylim = ax.get_ylim()
+    label_pending = True
+    for constraint in constraints:
+        kind = constraint.get("kind", "axis")
+        label = "Infeasible region" if label_pending else None
+
+        if kind == "circle":
+            try:
+                center = constraint["center"]
+                radius = float(constraint["radius"])
+                if len(center) != 2 or radius <= 0:
+                    continue
+                patch = Circle(
+                    (float(center[0]), float(center[1])),
+                    radius,
+                    facecolor="gray",
+                    edgecolor="dimgray",
+                    linewidth=0.8,
+                    linestyle="--",
+                    alpha=0.2,
+                    zorder=0,
+                    label=label,
+                )
+            except (KeyError, TypeError, ValueError):
+                continue
+            ax.add_patch(patch)
+            label_pending = False
+            continue
+
+        if kind == "interval":
+            try:
+                axis = int(constraint.get("axis", -1))
+                region_lower = float(constraint["lower"])
+                region_upper = float(constraint["upper"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if region_lower >= region_upper:
+                continue
+            if axis == 0:
+                lower, upper = original_xlim
+                if region_upper <= lower or region_lower >= upper:
+                    continue
+                ax.axvspan(
+                    max(region_lower, lower),
+                    min(region_upper, upper),
+                    color="gray",
+                    alpha=0.2,
+                    zorder=0,
+                    label=label,
+                )
+                ax.axvline(
+                    region_lower,
+                    color="dimgray",
+                    linewidth=0.8,
+                    linestyle="--",
+                    zorder=1,
+                )
+                ax.axvline(
+                    region_upper,
+                    color="dimgray",
+                    linewidth=0.8,
+                    linestyle="--",
+                    zorder=1,
+                )
+            elif axis == 1:
+                lower, upper = original_ylim
+                if region_upper <= lower or region_lower >= upper:
+                    continue
+                ax.axhspan(
+                    max(region_lower, lower),
+                    min(region_upper, upper),
+                    color="gray",
+                    alpha=0.2,
+                    zorder=0,
+                    label=label,
+                )
+                ax.axhline(
+                    region_lower,
+                    color="dimgray",
+                    linewidth=0.8,
+                    linestyle="--",
+                    zorder=1,
+                )
+                ax.axhline(
+                    region_upper,
+                    color="dimgray",
+                    linewidth=0.8,
+                    linestyle="--",
+                    zorder=1,
+                )
+            else:
+                continue
+            label_pending = False
+            continue
+
+        try:
+            axis = int(constraint.get("axis", -1))
+            operator = constraint.get("operator")
+            threshold = float(constraint["threshold"])
+        except (KeyError, TypeError, ValueError):
+            continue
+
+        if axis == 0:
+            lower, upper = original_xlim
+            if operator in (">=", ">") and threshold > lower:
+                ax.axvspan(
+                    lower,
+                    min(threshold, upper),
+                    color="gray",
+                    alpha=0.2,
+                    zorder=0,
+                    label=label,
+                )
+                ax.axvline(
+                    threshold,
+                    color="dimgray",
+                    linewidth=0.8,
+                    linestyle="--",
+                    zorder=1,
+                )
+            elif operator in ("<=", "<") and threshold < upper:
+                ax.axvspan(
+                    max(threshold, lower),
+                    upper,
+                    color="gray",
+                    alpha=0.2,
+                    zorder=0,
+                    label=label,
+                )
+                ax.axvline(
+                    threshold,
+                    color="dimgray",
+                    linewidth=0.8,
+                    linestyle="--",
+                    zorder=1,
+                )
+            else:
+                continue
+        elif axis == 1:
+            lower, upper = original_ylim
+            if operator in (">=", ">") and threshold > lower:
+                ax.axhspan(
+                    lower,
+                    min(threshold, upper),
+                    color="gray",
+                    alpha=0.2,
+                    zorder=0,
+                    label=label,
+                )
+                ax.axhline(
+                    threshold,
+                    color="dimgray",
+                    linewidth=0.8,
+                    linestyle="--",
+                    zorder=1,
+                )
+            elif operator in ("<=", "<") and threshold < upper:
+                ax.axhspan(
+                    max(threshold, lower),
+                    upper,
+                    color="gray",
+                    alpha=0.2,
+                    zorder=0,
+                    label=label,
+                )
+                ax.axhline(
+                    threshold,
+                    color="dimgray",
+                    linewidth=0.8,
+                    linestyle="--",
+                    zorder=1,
+                )
+            else:
+                continue
+        else:
+            continue
+
+        label_pending = False
+
+    # Background spans and boundary lines must not expand the data viewport.
+    ax.set_xlim(original_xlim)
+    ax.set_ylim(original_ylim)
 
 
 def draw_PF(information, ax):
@@ -40,7 +249,7 @@ def draw_PF(information, ax):
             continue
 
     # --- 当前 PF ---
-    feasible = np.array([ind.feasible for ind in population], dtype=bool)
+    feasible = get_feasible_mask(population)
     if np.any(feasible):
         ax.scatter(
             pf_matrix[feasible, 0],
@@ -66,13 +275,15 @@ def draw_PF(information, ax):
         ax.scatter(true_PF[:, 0], true_PF[:, 1],
                 s=10, label="Current True POF", color='orange', alpha=0.9, marker='.')
 
+    shade_infeasible_region(information, ax)
+
     # 图标题增加 evaluate_time
     ax.set_title(f"Dynamic PF (t={t_now}, evaluations={evaluate_time})", fontsize=10)
     ax.set_xlabel("f1", fontsize=9)
     ax.set_ylabel("f2", fontsize=9)
     ax.legend(fontsize=8)
     ax.grid(True)
-    plt.tight_layout()
+    fit_chart_layout(ax.figure)
 
 
 def draw_IGD_curve(information, ax):
@@ -156,7 +367,7 @@ def draw_IGD_curve(information, ax):
         ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
 
         # 优化布局
-        plt.tight_layout()
+        fit_chart_layout(ax.figure)
         
         # 设置刻度字体大小
         ax.tick_params(axis='both', labelsize=8)
@@ -213,19 +424,25 @@ def draw_PS(information, ax):
         ax.plot([], [], alpha=0.9, color='red', label="True POS")  # 添加图例
 
     # --- 当前 PS ---
-    # 使用 LineCollection 绘制每个个体的决策变量
     lines = [list(zip(decision, individual)) for individual in ps_matrix]
     lc = LineCollection(lines, colors='blue', alpha=1)
     ax.add_collection(lc)
-    ax.plot([], [], alpha=0.6, color='blue', label="Current PS")  # 添加图例
+    ax.plot([], [], alpha=0.6, color='blue', label="Current PS")
 
     # 图标题增加 evaluate_time
     ax.set_title(f"Dynamic PS (t={t_now}, evaluations={evaluate_time})", fontsize=10)
     ax.set_xlabel("Decision", fontsize=9)
     ax.set_ylabel("Value", fontsize=9)
+    ax.autoscale_view()
+    ax.set_xlim(
+        (1, num_decision)
+        if num_decision > 1
+        else (0.5, 1.5)
+    )
+    ax.set_xticks(decision)
     ax.legend(fontsize=8)
     ax.grid(True)
-    plt.tight_layout()
+    fit_chart_layout(ax.figure)
 
 
 def draw_constraint_violation(information, ax):
@@ -244,7 +461,7 @@ def draw_constraint_violation(information, ax):
     ax.set_xlabel("Individual", fontsize=9)
     ax.set_ylabel("Total positive violation", fontsize=9)
     ax.grid(True, axis="y", linestyle="--", alpha=0.4)
-    plt.tight_layout()
+    fit_chart_layout(ax.figure)
 
 
 def draw_selected_chart(information, ax, chart_type='Pareto Front'):

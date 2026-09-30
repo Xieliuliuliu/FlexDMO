@@ -4,6 +4,7 @@ import traceback
 from utils.run_executor import load_main_class_from_folder, convert_config_to_numeric
 from views.common.GlobalVar import global_vars
 from utils.result_io import save_experiment_module_information_results
+from utils.ui_dispatch import dispatch_ui
 
 def begin_running(task_card, on_complete=None):
     """开始运行实验任务
@@ -135,10 +136,7 @@ def listen_experiment_pipe(parent_conn, process, task_card):
                 task_card.update_status(final_status)
                 # 调用完成回调函数
                 if hasattr(task_card, 'on_complete') and task_card.on_complete:
-                    task_card.after(
-                        0,
-                        lambda: task_card.on_complete(task_card),
-                    )
+                    dispatch_ui(lambda: task_card.on_complete(task_card) if task_card.winfo_exists() else None)
                 return  # 直接返回，结束线程
                 
             # 检查是否有新数据
@@ -160,10 +158,7 @@ def listen_experiment_pipe(parent_conn, process, task_card):
                     task_card.update_status('completed')
                     # 调用完成回调函数
                     if hasattr(task_card, 'on_complete') and task_card.on_complete:
-                        task_card.after(
-                            0,
-                            lambda: task_card.on_complete(task_card),
-                        )
+                        dispatch_ui(lambda: task_card.on_complete(task_card) if task_card.winfo_exists() else None)
                     return  # 直接返回，结束线程
             
     except Exception as e:
@@ -175,10 +170,7 @@ def listen_experiment_pipe(parent_conn, process, task_card):
             task_card.update_status('completed')
             # 调用完成回调函数
             if hasattr(task_card, 'on_complete') and task_card.on_complete:
-                task_card.after(
-                    0,
-                    lambda: task_card.on_complete(task_card),
-                )
+                dispatch_ui(lambda: task_card.on_complete(task_card) if task_card.winfo_exists() else None)
         return  # 发生异常时也结束线程
     finally:
         # 确保关闭连接

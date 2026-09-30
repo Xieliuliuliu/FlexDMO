@@ -1,0 +1,7 @@
+{
+  "name": "CDP6",
+  "category": "Constrained",
+  "constraints": 2,
+  "difficulty": "Combined constraints",
+  "description": "动态组合约束：移动边界与非线性障碍同时作用。"
+}
