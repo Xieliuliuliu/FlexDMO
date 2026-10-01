@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 def run_smoke():
-    import main
+    import main_tk as main
     from utils.run_executor import run_in_test_mode
     from views.common.GlobalVar import global_vars
     from views.test_module.test_module_handler import (

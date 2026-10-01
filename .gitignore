@@ -55,6 +55,10 @@ Thumbs.db
 
 results/
 
+# Files imported by users are local research code, not bundled components.
+/flexdmo_app/plugins/response_strategy/
+/flexdmo_app/plugins/search_algorithm/
+
 # Local caches and temporary exports (keep results_output source tracked)
 .pytest_cache/
 .mypy_cache/

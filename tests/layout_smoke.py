@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 def run_smoke():
-    import main
+    import main_tk as main
     from views.common.GlobalVar import global_vars
     from views.components.scrolled_frame import NativeScrolledFrame
 

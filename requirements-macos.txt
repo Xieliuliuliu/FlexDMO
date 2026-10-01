@@ -1,4 +1,5 @@
-# macOS / Python 3.12 wheels. Keep the Windows dependency file available.
+# macOS / Python 3.12 scientific and desktop dependencies.
+-r flexdmo_app/requirements.txt
 matplotlib>=3.9,<4
 numpy>=1.26,<3
 Pillow==12.3.0
