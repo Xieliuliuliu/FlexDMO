@@ -58,8 +58,14 @@ class ConstraintPlotTests(unittest.TestCase):
             region.get_facecolor()[:3],
             colors.to_rgb("gray"),
         )
-        self.assertAlmostEqual(region.get_x(), axis.get_xlim()[0])
-        self.assertAlmostEqual(region.get_width(), 0.35 - axis.get_xlim()[0])
+        # axvspan returns different patch classes across Matplotlib versions.
+        # Check the rendered extent in data coordinates instead of requiring
+        # the Rectangle-only accessors.
+        vertices = axis.transData.inverted().transform(
+            region.get_transform().transform(region.get_path().vertices)
+        )
+        self.assertAlmostEqual(vertices[:, 0].min(), axis.get_xlim()[0])
+        self.assertAlmostEqual(vertices[:, 0].max(), 0.35)
 
     def test_pareto_set_keeps_current_population_blue_and_visible(self):
         axis = Figure().subplots()
