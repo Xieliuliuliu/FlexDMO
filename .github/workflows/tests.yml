@@ -19,7 +19,7 @@ jobs:
       - name: Install desktop system libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libegl1 libopengl0
+          sudo apt-get install -y libegl1 libopengl0 fonts-noto-cjk
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
       - name: Audit dependencies

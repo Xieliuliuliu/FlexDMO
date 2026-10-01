@@ -106,10 +106,16 @@ class InteractionTests(unittest.TestCase):
                     rect = view.visualRect(index)
                     self.assertFalse(rect.isEmpty())
                     image = view.viewport().grab(rect).toImage()
-                    colors = [image.pixelColor(x, y).name() for y in range(image.height())
+                    pixels = [image.pixelColor(x, y) for y in range(image.height())
                               for x in range(image.width())]
+                    colors = [pixel.name() for pixel in pixels]
                     self.assertGreater(colors.count("#129bad"), len(colors) // 4)
-                    self.assertIn("#ffffff", colors)  # Selected text is actually painted.
+                    # Small antialiased glyphs need not contain a pure-white
+                    # pixel on every OS. Still require painted light text on
+                    # the teal selection, not just a correct palette value.
+                    light_text = sum(pixel.red() > 160 and pixel.green() > 210
+                                     and pixel.blue() > 215 for pixel in pixels)
+                    self.assertGreater(light_text, 10, "Selected text is not visibly painted")
                     combo.hidePopup()
         finally:
             for combo in boxes:

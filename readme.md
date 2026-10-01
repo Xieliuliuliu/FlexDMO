@@ -52,7 +52,7 @@ Ubuntu / Debian 若缺少图形运行库，先执行：
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0
+sudo apt-get install -y libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 fonts-noto-cjk
 ```
 
 使用 Python 3.10，在图形会话中执行：
