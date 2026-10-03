@@ -66,10 +66,12 @@ class CodePluginTests(unittest.TestCase):
         sender.close()
         messages = []
         try:
-            while receiver.poll(20):
+            while True:
                 try:
+                    if not receiver.poll(20):
+                        break
                     messages.append(receiver.recv())
-                except EOFError:
+                except (EOFError, BrokenPipeError):
                     break
             process.join(3)
             self.assertFalse(process.is_alive(), "single-file worker timed out")

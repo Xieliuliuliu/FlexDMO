@@ -33,12 +33,14 @@ class PlatformSupportTests(unittest.TestCase):
             child.close()
             deadline = time.monotonic() + 45
             while time.monotonic() < deadline:
-                if parent.poll(0.1):
-                    try:
+                try:
+                    if parent.poll(0.1):
                         messages.append(parent.recv())
-                    except EOFError:
+                    elif not process.is_alive():
                         break
-                elif not process.is_alive():
+                except (EOFError, BrokenPipeError):
+                    # Windows poll() reports a closed named pipe as a broken
+                    # pipe, whereas POSIX exposes EOF through recv().
                     break
             process.join(timeout=5)
             self.assertFalse(process.is_alive(), "spawn worker did not finish")
