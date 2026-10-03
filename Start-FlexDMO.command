@@ -5,10 +5,6 @@ cd "$project_dir"
 if [[ -x .venv/bin/python ]] && .venv/bin/python -c 'import PySide6' >/dev/null 2>&1; then
   exec .venv/bin/python main.py
 fi
-# Support installations created before desktop dependencies were unified.
-if [[ -x .venv/qt-preview/bin/python ]]; then
-  exec .venv/qt-preview/bin/python main.py
-fi
 if [[ ! -x .venv/bin/python ]]; then
   print '请先按 README 的 macOS 安装步骤创建 .venv。'
   read '?按回车关闭…'

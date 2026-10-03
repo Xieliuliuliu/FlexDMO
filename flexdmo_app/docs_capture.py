@@ -1,6 +1,7 @@
 """Capture documentation from real Qt optimizations, without saved run data."""
 import argparse
 from pathlib import Path
+import sys
 import time
 
 
@@ -51,6 +52,12 @@ def main():
         app.processEvents()
         assert widget.grab().save(str(output / name))
         print("CAPTURE", name, flush=True)
+    callback_errors = []
+    previous_hook = sys.excepthook
+    def callback_error(kind, error, traceback):
+        callback_errors.append(f"{kind.__name__}: {error}")
+        previous_hook(kind, error, traceback)
+    sys.excepthook = callback_error
     try:
         window.start_run()
         wait(lambda: not window.controller.active)
@@ -109,6 +116,7 @@ def main():
         capture(code, "qt-code.png")
         code.reject()
         assert files() == before, "Documentation generation wrote run data"
+        assert not callback_errors, callback_errors
         print("PASS real single/batch comparison capture, lightweight batch, no saved runtime data", flush=True)
     finally:
         if code is not None:
@@ -122,6 +130,7 @@ def main():
         window.batch.runner.shutdown()
         window.dirty = False
         window.close()
+        sys.excepthook = previous_hook
 
 
 if __name__ == "__main__":

@@ -263,6 +263,25 @@ class InteractionTests(unittest.TestCase):
             self.assertTrue((Path(directory) / "manual.json").is_file())
             self.assertFalse(self.window.dirty)
 
+    def test_batch_summary_displays_budget_and_parameter_details(self):
+        from flexdmo_app.experiments import build_plan
+        batch = self.window.batch
+        selection = {kind: [record] for kind, record in
+                     self.window.request()["records"].items()}
+        shared = {"tau": "1", "n": "10", "repeats": 2, "seed": 11,
+                  "decision_num": 3, "solution_num": 6, "total_evaluate_time": 3}
+        tasks = build_plan(selection, shared)
+        for task in tasks:
+            task.update(status="completed", result={"metrics": {"MIGD": 0.1}})
+        batch.runner.tasks = tasks
+        batch.batch_finished("completed")
+        self.assertEqual(batch.stats.topLevelItemCount(), 1)
+        item = batch.stats.topLevelItem(0)
+        self.assertIn("种群 6", item.text(len(batch.stats_keys) - 1))
+        self.assertIn("决策变量数", item.toolTip(0))
+        self.assertIn("seed 不参与分组", item.toolTip(0))
+        self.assertEqual(item.text(batch.stats_keys.index("完成次数")), "2")
+
     def test_switch_algorithm_retains_problem_parameters(self):
         fields = self.window.parameter_fields["problem"]
         fields["solution_num"].setText("42")

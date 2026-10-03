@@ -1,4 +1,4 @@
-"""A standalone, dockable research workspace for the Qt migration trial."""
+"""The dockable FlexDMO research workspace."""
 from datetime import datetime
 from pathlib import Path
 import queue
@@ -182,7 +182,7 @@ class FlexDMOWindow(QMainWindow):
         toolbar.setMovable(False)
         self.addToolBar(toolbar)
         logo = QLabel()
-        logo.setPixmap(QPixmap(str(ROOT / "views/resources/images/icon.png")).scaled(
+        logo.setPixmap(QPixmap(str(ROOT / "flexdmo_app/resources/images/icon.png")).scaled(
             28, 28, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         logo.setAccessibleName("FlexDMO 标志")
         toolbar.addWidget(logo)

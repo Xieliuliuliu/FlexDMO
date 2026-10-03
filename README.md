@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="views/resources/images/icon.png" alt="FlexDMO 标志" width="112"/>
+  <img src="flexdmo_app/resources/images/icon.png" alt="FlexDMO 标志" width="112"/>
   <h1>FlexDMO</h1>
   <p><strong>动态多目标优化实验平台</strong></p>
   <p>组合算法 · 观察演化 · 回放过程 · 对比实验</p>

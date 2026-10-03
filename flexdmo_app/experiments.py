@@ -179,12 +179,16 @@ def grouped_statistics(tasks):
     groups = {}
     for task in tasks:
         row = task_row(task)
-        key = tuple(row[k] for k in ("问题", "动态策略", "搜索算法", "tau", "n"))
+        params = copy.deepcopy(task["request"]["params"])
+        params["search"].pop("seed", None)
+        configuration = json.dumps(params, sort_keys=True, ensure_ascii=False, allow_nan=False)
+        key = tuple(row[k] for k in ("问题", "动态策略", "搜索算法", "tau", "n")) + (configuration,)
         groups.setdefault(key, []).append((task, row))
     output = []
     for key, entries in groups.items():
-        row = dict(zip(("问题", "动态策略", "搜索算法", "tau", "n"), key))
-        complete = [entry for task, entry in entries if task["status"] == "completed"]
+        row = dict(zip(("问题", "动态策略", "搜索算法", "tau", "n", "参数配置"), key))
+        complete = [entry for task, entry in entries if task["status"] == "completed"
+                    and not task.get("result", {}).get("partial")]
         row.update(计划次数=len(entries), 完成次数=len(complete))
         for metric in ("MIGD", "MGD", "MHV", "feasibility"):
             values = [entry[metric] for entry in complete if entry.get(metric) is not None]

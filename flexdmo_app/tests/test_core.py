@@ -86,12 +86,12 @@ class CoreTests(unittest.TestCase):
             self.assertEqual(restored["population"][1].rank, 1)
             self.assertEqual(restored["t"], 1)
 
-    def test_original_tk_reader_accepts_qt_result(self):
-        from utils.result_io import load_test_module_information_results
+    def test_statistics_reader_accepts_desktop_result(self):
+        from utils.result_io import load_result_from_files
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "compatible.json"
             save_frames(path, [self.frame])
-            restored = load_test_module_information_results(str(path))
+            restored = next(load_result_from_files([path]))
             self.assertIsNotNone(restored)
             frame = restored["runtime_populations"][1][30]
             np.testing.assert_array_equal(frame["population"].get_objective_matrix(), self.frame["population"].get_objective_matrix())

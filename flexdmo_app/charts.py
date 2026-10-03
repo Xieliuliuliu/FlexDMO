@@ -1,4 +1,4 @@
-"""Qt-native Matplotlib canvas, with no Tk global state."""
+"""Responsive Matplotlib charts for the desktop workspace."""
 import time
 import numpy as np
 from matplotlib.collections import LineCollection, PolyCollection

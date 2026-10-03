@@ -77,6 +77,26 @@ class ExperimentTests(unittest.TestCase):
         self.assertEqual(row["MIGD均值"], float("inf"))
         self.assertIsNone(row["MIGD标准差"])
 
+    def test_different_budgets_and_algorithm_parameters_are_not_merged(self):
+        tasks = build_plan(self.selection, self.shared)
+        changed_budget = copy.deepcopy(tasks[0])
+        changed_budget["request"]["params"]["problem"]["solution_num"] += 2
+        changed_algorithm = copy.deepcopy(tasks[0])
+        changed_algorithm["request"]["params"]["search"]["disM"] += 1
+        rows = grouped_statistics(tasks + [changed_budget, changed_algorithm])
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(sorted(row["计划次数"] for row in rows), [1, 1, 2])
+        self.assertTrue(all("参数配置" in row for row in rows))
+
+    def test_partial_results_are_not_counted_as_complete(self):
+        tasks = build_plan(self.selection, self.shared)
+        for task in tasks:
+            task.update(status="completed", result={"partial": True, "metrics": {"MIGD": 0.1}})
+        row = grouped_statistics(tasks)[0]
+        self.assertEqual(row["计划次数"], 2)
+        self.assertEqual(row["完成次数"], 0)
+        self.assertIsNone(row["MIGD均值"])
+
     def test_csv_excel_manifest_keep_infinite_metric_explicit(self):
         from openpyxl import load_workbook
         tasks = build_plan(self.selection, self.shared)

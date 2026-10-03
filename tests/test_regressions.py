@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 import tempfile
 import unittest
 
@@ -15,13 +15,7 @@ from problems.Problem import Problem
 from problems.benchmark.DF1.main import DF1
 from problems.benchmark.CDP1.main import CDP1
 from utils.metrics import calculate_IGD, calculate_MIGD
-from utils.result_io import (
-    _get_next_filename,
-    load_test_module_information_results,
-    save_test_module_information_results,
-)
-from views.common.GlobalVar import global_vars
-from views.test_module.test_module_handler import build_replay_timeline
+from flexdmo_app.core import load_frames, save_frames
 
 
 class ToyProblem(Problem):
@@ -192,94 +186,46 @@ class MetricsRegressionTests(unittest.TestCase):
 
 
 class ResultIoRegressionTests(unittest.TestCase):
-    def test_next_filename_does_not_overwrite_when_indices_have_gaps(self):
-        with tempfile.TemporaryDirectory() as directory:
-            for name in ("result_1.json", "result_3.json"):
-                open(os.path.join(directory, name), "w", encoding="utf-8").close()
-
-            self.assertEqual(_get_next_filename(directory, "result"), "result_4.json")
-
-    def test_constrained_result_round_trip_preserves_replay_data(self):
+    def snapshot(self, t=0, evaluations=5):
         problem = CDP1(3, 10, 1, 4, 2)
+        problem.t = t
         population = Population(
-            X=np.array(
-                [
-                    [0.1, 0.5, 0.5],
-                    [0.4, 0.5, 0.5],
-                    [0.8, 0.5, 0.5],
-                    [1.0, 0.5, 0.5],
-                ]
-            ),
-            xl=problem.xl,
-            xu=problem.xu,
-        )
+            X=[[0.1, 0.5, 0.5], [0.4, 0.5, 0.5],
+               [0.8, 0.5, 0.5], [1.0, 0.5, 0.5]],
+            xl=problem.xl, xu=problem.xu)
         population.update_objective_constrain(problem)
-        settings = {
-            "problem_class": "CDP1",
-            "search_algorithm_class": "NSGA2",
-            "response_strategy_class": "NoResponse",
-            "problem_params": {
-                "decision_num": 3,
-                "n": 10,
-                "tau": 1,
-                "solution_num": 4,
-                "total_evaluate_time": 2,
-            },
-        }
-        snapshot = {
-            "settings": settings,
-            "POS": problem.get_pareto_set(),
-            "POF": problem.get_pareto_front(),
+        return {
+            "settings": {
+                "problem_class": "CDP1", "search_algorithm_class": "NSGA2",
+                "response_strategy_class": "NoResponse",
+                "problem_params": {"decision_num": 3, "n": 10, "tau": 1,
+                                   "solution_num": 4, "total_evaluate_time": 2}},
+            "POS": problem.get_pareto_set(), "POF": problem.get_pareto_front(),
             "bound": [problem.xl, problem.xu],
             "objective_constraints": problem.get_objective_constraints(),
-            "t": 0,
-            "evaluate_times": problem.evaluate_time,
-            "population": population,
-        }
-        original_test_module = global_vars.get("test_module")
-        try:
-            global_vars["test_module"] = {
-                "runtime_populations": {
-                    0: {problem.evaluate_time: snapshot}
-                }
-            }
-            with tempfile.TemporaryDirectory() as directory:
-                result_path = save_test_module_information_results(directory)
-                loaded = load_test_module_information_results(result_path)
-            restored = loaded["runtime_populations"][0][problem.evaluate_time]
-            restored_population = restored["population"]
-            np.testing.assert_allclose(
-                restored_population.get_objective_matrix(),
-                population.get_objective_matrix(),
-            )
-            np.testing.assert_allclose(
-                restored_population.get_constrain_matrix(),
-                population.get_constrain_matrix(),
-            )
-            self.assertEqual(
-                [ind.feasible for ind in restored_population],
-                [ind.feasible for ind in population],
-            )
-            self.assertEqual(
-                restored["objective_constraints"],
-                problem.get_objective_constraints(),
-            )
-        finally:
-            if original_test_module is None:
-                global_vars.pop("test_module", None)
-            else:
-                global_vars["test_module"] = original_test_module
+            "t": t, "evaluate_times": evaluations, "population": population}
+
+    def test_constrained_result_round_trip_preserves_replay_data(self):
+        snapshot = self.snapshot()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "run.json"
+            save_frames(path, [snapshot])
+            restored = load_frames(path)[0]
+        for method in ("get_objective_matrix", "get_constrain_matrix"):
+            np.testing.assert_allclose(getattr(restored["population"], method)(),
+                                       getattr(snapshot["population"], method)())
+        self.assertEqual([ind.feasible for ind in restored["population"]],
+                         [ind.feasible for ind in snapshot["population"]])
+        self.assertEqual(restored["objective_constraints"], snapshot["objective_constraints"])
 
     def test_replay_timeline_orders_snapshots_globally(self):
-        runtime = {
-            1: {30: {"id": "third"}},
-            0: {20: {"id": "second"}, 5: {"id": "first"}},
-        }
-        timeline = build_replay_timeline(runtime)
-        self.assertEqual(
-            [item[2]["id"] for item in timeline],
-            ["first", "second", "third"],
-        )
+        frames = [self.snapshot(1, 30), self.snapshot(0, 20), self.snapshot(0, 5)]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "run.json"
+            save_frames(path, frames)
+            restored = load_frames(path)
+        self.assertEqual([(f["t"], f["evaluate_times"]) for f in restored],
+                         [(0, 5), (0, 20), (1, 30)])
 
 
 if __name__ == "__main__":

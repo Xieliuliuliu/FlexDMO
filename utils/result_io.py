@@ -1,402 +1,58 @@
+"""Headless result loading for statistical reports.
+
+Desktop replay and statistics use the same validated snapshot reader.
+No application window, global UI state, or optional algorithm library is loaded.
+"""
 import os
-import json
-import re
-import traceback
-import numpy as np
+from pathlib import Path
+import warnings
 
-from utils.information_parser import convert_config_to_numeric, find_match_problem, get_problem_config
-from views.common.GlobalVar import global_vars
-from components.Population import Population
-from components.Individual import Individual
-from views.components.progress_dialog import ProgressDialog
-from utils.test_runtime import snapshot_history
+from flexdmo_app.core import load_frames
 
 
-def _save_json_with_numpy(data, file_path):
-    """通用的JSON保存函数，处理numpy数据类型
-    
-    Args:
-        data: 要保存的数据
-        file_path: 保存路径
+def load_result_from_files(input_paths, *, on_error=None):
+    """Yield validated results from JSON files or recursively scanned directories.
+
+    Inputs may be one path or an iterable of paths. Overlapping inputs are
+    deduplicated, and directory contents are processed in deterministic order.
+    Invalid files are skipped with a warning, or reported through
+    on_error(path, exception). Errors raised by that callback propagate.
     """
-    def convert(obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        if isinstance(obj, (np.float32, np.float64)):
-            return float(obj)
-        if isinstance(obj, (np.int32, np.int64)):
-            return int(obj)
-        return str(obj)
+    if isinstance(input_paths, (str, os.PathLike)):
+        input_paths = [input_paths]
+    seen = set()
 
-    # 保存为 JSON 文件
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=None, separators=(',', ':'), default=convert)
+    def report(path, error):
+        if on_error is None:
+            warnings.warn(f"无法读取结果 {path}：{error}", RuntimeWarning, stacklevel=3)
+        else:
+            on_error(path, error)
 
-    print(f"[保存成功] -> {file_path}")
-
-def _build_base_filename(settings):
-    """构建基础文件名
-    
-    Args:
-        settings: 包含算法配置信息的字典
-    
-    Returns:
-        str: 基础文件名
-    """
-    response = settings.get('response_strategy_class', 'UnknownResponse')
-    algo = settings.get('search_algorithm_class', 'UnknownAlgo')
-    problem = settings.get('problem_class', 'UnknownProblem')
-    
-    # 从problem_params中获取tau和n
-    problem_params = settings.get('problem_params', {})
-    tau = problem_params.get('tau', 'unknown_tau')
-    n = problem_params.get('n', 'unknown_n')
-    
-    base_name = f"{response}_on_{algo}_on_{problem}_tau{tau}_n{n}"
-    return base_name
-
-def _get_next_filename(save_path, base_filename):
-    """获取下一个可用的文件名
-    
-    Args:
-        save_path: 保存路径
-        base_filename: 基础文件名
-    
-    Returns:
-        str: 完整的文件名
-    """
-    pattern = re.compile(rf"^{re.escape(base_filename)}_(\d+)\.json$")
-    indices = []
-    for filename in os.listdir(save_path):
-        match = pattern.match(filename)
-        if match:
-            indices.append(int(match.group(1)))
-    index = max(indices, default=0) + 1
-    return f"{base_filename}_{index}.json"
-
-def save_module_results(data, save_path):
-    """通用的模块结果保存函数
-    
-    Args:
-        data: 要保存的数据，包含settings信息
-        save_path: 保存路径
-        extra_info: 额外的文件名信息，如tau、n等
-        auto_index: 是否自动添加索引号，默认True
-    """
-    os.makedirs(save_path, exist_ok=True)
-    
-    settings = {}
-    # 从数据中获取settings
-    if isinstance(data, dict) and 'settings' in data:
-        settings = data['settings']
-    
-    # 构建文件名
-    base_filename = _build_base_filename(settings)
-    filename = _get_next_filename(save_path, base_filename)
-    
-    full_path = os.path.join(save_path, filename)
-    _save_json_with_numpy(data, full_path)
-    return full_path
-
-
-def _serialize_runtime_snapshot(information):
-    snapshot = information["population"].to_dict()
-    for source_key, target_key in (
-        ("POS", "POS"),
-        ("POF", "POF"),
-        ("bound", "bound"),
-        ("objective_constraints", "objective_constraints"),
-        ("t", "t"),
-        ("evaluate_times", "evaluate_times"),
-    ):
-        if source_key in information:
-            snapshot[target_key] = information[source_key]
-    return snapshot
-
-def save_experiment_module_information_results(history, save_path):
-    """保存实验模块的结果
-    
-    Args:
-        history: 算法运行的历史记录
-        save_path: 保存路径
-    """
-    # 从settings中获取算法组合信息
-    settings = history.get('settings', {})
-    response = settings.get('response_strategy_class', 'UnknownResponse')
-    search = settings.get('search_algorithm_class', 'UnknownAlgo')
-    problem = settings.get('problem_class', 'UnknownProblem')
-    
-    # 构建子目录路径
-    result_dir = os.path.join(save_path, f"{response}_{search}", problem)
-    os.makedirs(result_dir, exist_ok=True)
-    
-    # 转换runtime中的population为dict
-    runtime_dict = {}
-    for t, populations in history.get('runtime', {}).items():
-        runtime_dict[str(t)] = {}
-        for eval_time, population in populations.items():
-            runtime_dict[str(t)][str(eval_time)] = population.to_dict()
-
-    final_result = {
-        "settings": settings,
-        "information": runtime_dict
-    }
-    
-    return save_module_results(final_result, result_dir)
-
-def save_test_module_information_results(save_path="results/test_module/"):
-    """保存 test_module 中所有环境的 settings 和各时间点的 population 字符串表示，结构为 settings + information"""
-    runtime_populations = snapshot_history()
-    if not runtime_populations:
-        raise ValueError("没有可保存的测试运行数据")
-
-    # 获取 settings 信息（从任意环境任意时间点提取一次即可）
-    any_env = next(iter(runtime_populations.values()))
-    any_result = next(iter(any_env.values()))
-    settings = any_result.get('settings', {})
-    
-    # 构建总结果结构
-    final_result = {
-        "settings": settings,
-        "information": {}
-    }
-
-    # 遍历每个环境
-    for env_key, population_info in runtime_populations.items():
-        env_population_record = {}
-
-        # 提取该环境下的每个时间点 population
-        for time_key, info in population_info.items():
-            if "population" in info:
-                env_population_record[str(time_key)] = _serialize_runtime_snapshot(info)
-
-        final_result["information"][str(env_key)] = env_population_record
-
-    # 使用通用保存函数
-    return save_module_results(final_result, save_path)
-
-def load_test_module_information_results(file_path):
-    """从JSON文件中加载测试模块的结果信息
-    
-    Args:
-        file_path (str): JSON文件的完整路径
-        
-    Returns:
-        dict: 包含settings和各环境population信息的字典
-    """
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            
-        # 恢复settings
-        settings = data.get('settings', {})
-        
-        # 获取问题配置
-        problem_config = settings.get('problem_params', {})
-        problem_class = settings.get('problem_class', '')
-        
-        # 动态导入问题类
-        from utils.run_executor import load_main_class_from_folder
-        matching_problem = find_match_problem(problem_class)
-        if matching_problem is None:
-            raise ValueError(f"无法找到结果所需的问题: {problem_class}")
-        ProblemClass = load_main_class_from_folder(matching_problem['folder_name'])
-        
-        # 获取默认配置并更新
-        config = get_problem_config(problem_class)
-        for key, value in problem_config.items():
-            if key in config:
-                config[key] = value
-        
-        # 初始化问题类
-        problem = ProblemClass(**convert_config_to_numeric(config))
-        
-        # 恢复runtime_populations
-        runtime_populations = {}
-        information = data.get('information', {})
-        
-        for env_key, env_data in information.items():
-            env_populations = {}
-            
-            for time_key, pop_data in env_data.items():
-                # 从字典重建Population对象
-                individuals = []
-                decisions = pop_data.get('decision', [])
-                if not decisions:
-                    continue
-
-                stored_objectives = pop_data.get("objective")
-                stored_constraints = pop_data.get("constraint")
-                has_objectives = (
-                    isinstance(stored_objectives, list)
-                    and len(stored_objectives) == len(decisions)
-                    and all(value is not None for value in stored_objectives)
-                )
-                if has_objectives:
-                    objectives = np.asarray(stored_objectives, dtype=float)
-                    constrains = (
-                        np.asarray(stored_constraints, dtype=float)
-                        if (
-                            isinstance(stored_constraints, list)
-                            and len(stored_constraints) == len(decisions)
-                            and all(value is not None for value in stored_constraints)
-                        )
-                        else None
-                    )
-                else:
-                    objectives, constrains = problem.evaluate(
-                        np.asarray(decisions, dtype=float),
-                        False,
-                        t=int(env_key),
-                    )
-                    
-                for i in range(len(decisions)):
-                    # 创建个体
-                    individual = Individual(np.array(decisions[i]))
-                    individual.F = np.array(objectives[i])
-                    
-                    # 设置约束值
-                    if constrains is not None:
-                        individual.G = np.array(constrains[i])
-                        individual.constraint_violation = float(
-                            np.sum(np.maximum(constrains[i], 0.0))
-                        )
-                        individual.feasible = individual.constraint_violation <= 1e-12
-                    else:
-                        individual.constraint_violation = 0.0
-                        individual.feasible = True
-
-                    for field in ("feasible", "constraint_violation", "rank"):
-                        values = pop_data.get(field)
-                        if isinstance(values, list) and i < len(values):
-                            setattr(individual, field, values[i])
-                    crowding = pop_data.get("crowding_distance")
-                    if (
-                        isinstance(crowding, list)
-                        and i < len(crowding)
-                        and crowding[i] is not None
-                    ):
-                        individual.crowding_distance = float(crowding[i])
-                    
-                    individuals.append(individual)
-                    
-                # 创建种群
-                bounds = pop_data.get("bound")
-                xl = pop_data.get("xl")
-                xu = pop_data.get("xu")
-                if bounds and len(bounds) == 2:
-                    xl, xu = bounds
-                population = Population(
-                    individuals=individuals,
-                    xl=np.asarray(xl, dtype=float) if xl is not None else problem.xl,
-                    xu=np.asarray(xu, dtype=float) if xu is not None else problem.xu,
-                )
-                
-                # 设置问题的时间步
-                t = int(env_key)
-                problem.t = t
-                
-                # 使用问题类获取当前时间步的POF和POS
-                POF = np.asarray(
-                    pop_data.get("POF", problem.get_pareto_front(t)),
-                    dtype=float,
-                )
-                POS = np.asarray(
-                    pop_data.get("POS", problem.get_pareto_set(t)),
-                    dtype=float,
-                )
-                
-                # 重建每个时间点的信息字典
-                env_populations[int(time_key)] = {
-                    'population': population,
-                    'settings': settings,  # 每个时间点都包含相同的settings
-                    'POS': POS,
-                    'POF': POF,
-                    'bound': [population.xl, population.xu],
-                    'objective_constraints': pop_data.get(
-                        'objective_constraints',
-                        problem.get_objective_constraints(t),
-                    ),
-                    't': t,
-                    'evaluate_times': int(time_key)
-                }
-                
-            runtime_populations[int(env_key)] = env_populations
-            
-        # 更新global_vars中的数据
-        if 'test_module' not in global_vars:
-            global_vars['test_module'] = {}
-        global_vars['test_module']['runtime_populations'] = runtime_populations
-        
-        print(f"[加载成功] <- {file_path}")
-        return {'settings': settings, 'runtime_populations': runtime_populations}
-        
-    except Exception as e:
-        print(f"[加载失败] {str(e)}")
-        print(traceback.format_exc())
-        return None
-
-def _get_all_files(path):
-    """递归获取文件夹下的所有.json文件
-    
-    Args:
-        path: 文件或文件夹路径
-        
-    Returns:
-        list: 所有.json文件的路径列表
-    """
-    if os.path.isfile(path):
-        return [path] if path.endswith('.json') else []
-        
-    files = []
-    for item in os.listdir(path):
-        item_path = os.path.join(path, item)
-        if os.path.isfile(item_path) and item_path.endswith('.json'):
-            files.append(item_path)
-        elif os.path.isdir(item_path):
-            files.extend(_get_all_files(item_path))
-    return files
-
-def load_result_from_files(input_paths):
-    """从文件中加载结果
-    
-    Args:
-        input_paths: 输入路径列表，可以是文件或文件夹的混合
-        
-    Yields:
-        每个文件的加载结果
-    """
-    # 展开所有路径，将文件夹转换为文件列表
-    expanded_paths = []
-    for path in input_paths:
-        expanded_paths.extend(_get_all_files(path))
-            
-    # 计算需要加载的文件总数
-    file_count = len(expanded_paths)
-    
-    # 创建进度条对话框
-    progress_dialog = ProgressDialog(title="Loading Results")
-    progress_dialog.set_title("Loading files...")
-    
-    # 加载所有文件
-    for i, file_path in enumerate(expanded_paths):
+    for raw_path in input_paths:
+        path = Path(raw_path)
         try:
-            # 更新状态
-            progress_dialog.update_status(f"Loading: {os.path.basename(file_path)}")
-            
-            # 加载文件并yield结果
-            result = load_test_module_information_results(file_path)
-            if result:
-                result['file_path'] = file_path  # 添加文件路径信息
-                yield result
-            
-            # 更新进度
-            progress = (i + 1) / file_count * 100
-            progress_dialog.update_progress(progress)
-            
-        except Exception as e:
-            print(f"Error loading file {file_path}: {str(e)}")
+            if path.is_dir():
+                paths = sorted(p for p in path.rglob("*")
+                               if p.is_file() and p.suffix.lower() == ".json")
+            elif path.is_file():
+                paths = [path] if path.suffix.lower() == ".json" else []
+            else:
+                raise FileNotFoundError(f"结果路径不存在：{path}")
+        except OSError as error:
+            report(path, error)
             continue
-            
-    # 关闭进度条对话框
-    progress_dialog.close()
+        for candidate in paths:
+            try:
+                canonical = candidate.resolve()
+                if canonical in seen:
+                    continue
+                seen.add(canonical)
+                frames = load_frames(candidate)
+            except (OSError, ValueError, TypeError, KeyError, ImportError) as error:
+                report(candidate, error)
+                continue
+            runtime = {}
+            for frame in frames:
+                runtime.setdefault(frame["t"], {})[frame["evaluate_times"]] = frame
+            yield {"settings": frames[0]["settings"],
+                   "runtime_populations": runtime, "file_path": str(candidate)}

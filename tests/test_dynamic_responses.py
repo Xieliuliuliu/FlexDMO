@@ -1,3 +1,5 @@
+from pathlib import Path
+import tempfile
 import unittest
 
 import numpy as np
@@ -8,7 +10,7 @@ from algorithms.response_strategy.dynamic_nsga2 import polynomial_mutation
 from algorithms.search_algorithm.NSGA2.main import NSGA2
 from components.Population import Population
 from problems.benchmark.CDP6.main import CDP6
-from views.test_module.test_module_handler import build_replay_timeline
+from flexdmo_app.core import load_frames, save_frames
 
 
 class RecordingPipe:
@@ -136,16 +138,14 @@ class DynamicResponseTests(unittest.TestCase):
                 frame["evaluate_times"]
             ] = frame
 
-        timeline = build_replay_timeline(runtime)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "run.json"
+            save_frames(path, recorder.frames)
+            timeline = load_frames(path)
         self.assertEqual(len(timeline), len(recorder.frames))
-        self.assertEqual(
-            [item[0] for item in timeline],
-            sorted(item[0] for item in timeline),
-        )
-        self.assertEqual(
-            timeline[-1][2]["settings"]["response_strategy_class"],
-            "DNSGAIIB",
-        )
+        keys = [(f["t"], f["evaluate_times"]) for f in timeline]
+        self.assertEqual(keys, sorted(keys))
+        self.assertEqual(timeline[-1]["settings"]["response_strategy_class"], "DNSGAIIB")
 
 
 if __name__ == "__main__":

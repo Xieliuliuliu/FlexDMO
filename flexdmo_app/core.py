@@ -328,6 +328,8 @@ def load_frames(path):
         raise ValueError("结果中的测试问题不在当前注册表中")
     params = defaults(record)
     stored_params = settings.get("problem_params", {})
+    if not isinstance(stored_params, dict):
+        raise ValueError("结果中的问题参数格式无效")
     for key in params:
         if key in stored_params:
             params[key] = stored_params[key]
@@ -343,11 +345,15 @@ def load_frames(path):
         t = int(environment)
         if t < 0:
             raise ValueError("环境编号不能为负")
+        if not isinstance(information[environment], dict):
+            raise ValueError("结果中的环境快照格式无效")
         for evaluation in sorted(information[environment], key=int):
             count = int(evaluation)
             if count < 0:
                 raise ValueError("评估次数不能为负")
             snapshot = information[environment][evaluation]
+            if not isinstance(snapshot, dict):
+                raise ValueError("结果中的种群快照格式无效")
             X = _matrix(snapshot["decision"], problem.decision_num, "决策矩阵")
             raw_f, raw_g = snapshot.get("objective"), snapshot.get("constraint")
             F = _matrix(raw_f, problem.n_obj, "目标矩阵") if raw_f and all(v is not None for v in raw_f) else None
@@ -362,6 +368,8 @@ def load_frames(path):
             bounds = snapshot.get("bound")
             if bounds is None:
                 bounds = [snapshot.get("xl"), snapshot.get("xu")]
+            if not isinstance(bounds, (list, tuple)) or len(bounds) != 2:
+                raise ValueError("变量边界必须包含下界与上界")
             lower = np.asarray(bounds[0] if bounds[0] is not None else problem.xl, dtype=float)
             upper = np.asarray(bounds[1] if bounds[1] is not None else problem.xu, dtype=float)
             if lower.shape != (problem.decision_num,) or upper.shape != lower.shape or not np.isfinite([lower, upper]).all() or np.any(lower > upper):

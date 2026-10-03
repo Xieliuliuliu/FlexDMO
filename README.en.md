@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="views/resources/images/icon.png" alt="FlexDMO logo" width="112"/>
+  <img src="flexdmo_app/resources/images/icon.png" alt="FlexDMO logo" width="112"/>
   <h1>FlexDMO</h1>
   <p><strong>A research platform for dynamic multiobjective optimization</strong></p>
   <p>Compose algorithms · Inspect evolution · Replay runs · Compare experiments</p>

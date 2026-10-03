@@ -69,6 +69,8 @@
    也可点击“导出统计”手动写出 CSV、Excel 和清单，不写原始快照。
    统计显示 MIGD / MGD / MHV 的均值与样本标准差，以及平均可行率。
    仅完整成功的重复计入汇总，失败/取消单列；IGD=∞ 不会被忽略或伪装成 0。
+   汇总按完整问题与算法参数分组，重复 seed 不参与分组；不同预算不会混算。
+   “参数配置”列显示预算，悬停查看参数；导出文件保留完整配置。
    MHV 使用原仓库约定的 `当前真实 PF 最大值 + 0.5` 参考点，只支持二维目标；
    更高维度显示未支持，而不是编造指标。
 7. “保存实验配置 / 加载实验配置”保存组件名称、参数扫描和高级参数，可跨会话复用。
@@ -122,7 +124,7 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest flexdmo_app.tests.test_co
 # 实际 Qt 事件循环与 spawn 子进程集成测试
 QT_QPA_PLATFORM=offscreen .venv/bin/python -m flexdmo_app.smoke
 QT_QPA_PLATFORM=offscreen .venv/bin/python -m flexdmo_app.batch_smoke
-# 原版本回归测试
+# 算法与数据回归测试
 .venv/bin/python -m unittest discover -s tests
 # 同问题预算分组、轻量历史和比较界面
 QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest flexdmo_app.tests.test_comparison

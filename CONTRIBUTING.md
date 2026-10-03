@@ -39,7 +39,8 @@ macOS 可运行以下集成检查；不要设置 `QT_QPA_PLATFORM=offscreen`：
 .venv/bin/python -m flexdmo_app.code_smoke
 ```
 
-CI 的自动测试和依赖检查见 [tests.yml](.github/workflows/tests.yml)。
+CI 配置覆盖 Linux、Windows、macOS 的自动测试和依赖检查，见 [tests.yml](.github/workflows/tests.yml)。
+边界检查会阻止旧界面依赖回流，并验证基础启动不依赖算法专用训练库。
 自动测试通过不意味着所有平台、组件和参数组合均已验证。
 
 ## 新增或修改算法

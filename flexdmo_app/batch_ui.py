@@ -1,6 +1,7 @@
 """Low-configuration batch workspace; component parameters are data-driven."""
 from collections import Counter
 from pathlib import Path
+import json
 import os
 
 from PySide6.QtCore import Qt, Signal, QUrl
@@ -15,7 +16,7 @@ from .component_ui import ParameterDialog
 from .component_choices import (component_year as algorithm_year, component_sort_key as algorithm_sort_key,
                                 ordered_registry)
 from .component_selector import ComponentSelector
-from .core import ROOT, records
+from .core import ROOT, parameter_label, records
 from .experiments import build_plan, grouped_statistics, task_row
 from .widgets import ChoiceBox as QComboBox
 
@@ -144,7 +145,8 @@ class BatchWidget(QWidget):
         self.stats.setRootIsDecorated(False)
         self.stats.setAlternatingRowColors(True)
         self.stats_keys = ["问题", "动态策略", "搜索算法", "tau", "n", "计划次数", "完成次数",
-            "MIGD均值", "MIGD标准差", "MGD均值", "MGD标准差", "MHV均值", "MHV标准差", "feasibility均值", "feasibility标准差"]
+            "MIGD均值", "MIGD标准差", "MGD均值", "MGD标准差", "MHV均值", "MHV标准差", "feasibility均值", "feasibility标准差",
+            "参数配置"]
         self.stats.setHeaderLabels([key.replace("feasibility", "可行率") for key in self.stats_keys])
         self.result_tabs.addTab(self.stats, "汇总统计")
         result_layout.addWidget(self.result_tabs, 1)
@@ -357,7 +359,20 @@ class BatchWidget(QWidget):
         self.tasks = self.runner.tasks
         self.stats.clear()
         for row in grouped_statistics(self.tasks):
-            QTreeWidgetItem(self.stats, [format_value(row.get(key)) for key in self.stats_keys])
+            values = [format_value(row.get(key)) for key in self.stats_keys]
+            params = json.loads(row["参数配置"])
+            problem = params["problem"]
+            values[-1] = (f"种群 {problem.get('solution_num', '—')} · "
+                          f"变量 {problem.get('decision_num', '—')} · "
+                          f"环境 {problem.get('total_evaluate_time', '—')}")
+            item = QTreeWidgetItem(self.stats, values)
+            details = ["同一参数配置的重复实验（seed 不参与分组）"]
+            for kind, title in (("dynamic", "动态策略"), ("search", "搜索算法"), ("problem", "测试问题")):
+                details.append(title + "：")
+                details.extend(f"  {parameter_label({}, key)}：{value}"
+                               for key, value in params[kind].items())
+            for column in range(len(values)):
+                item.setToolTip(column, "\n".join(details))
         counts = Counter(t["status"] for t in self.tasks)
         self.status.setText(f"完成 {counts['completed']} / 失败 {counts['failed']} / 取消 {counts['canceled']}；"
                             + (f"统计保存失败：{self.runner.report_error}" if self.runner.report_error else
