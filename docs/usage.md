@@ -1,97 +1,11 @@
-# FlexDMO
+# FlexDMO 使用手册
 
-<div align="center"><img src="views/resources/images/icon.png" alt="FlexDMO" width="160"/></div>
-
-[![Tests](https://github.com/Xieliuliuliu/FlexDMO/actions/workflows/tests.yml/badge.svg)](https://github.com/Xieliuliuliu/FlexDMO/actions/workflows/tests.yml)
-
-FlexDMO 是一个 Python 动态多目标优化实验平台。组合响应策略、搜索算法和测试问题，
-观察环境变化后的种群恢复过程，再用重复实验比较结果。带约束的问题使用可行性优先规则。
-
-在本地选择组合、查看运行过程、安排重复实验。启动入口为 `python main.py`；
-详细操作见下文与[官网文档](https://flexdmo.cn)。
-
-## 主要功能
-
-- 单次测试：实时观察 PF、PS、IGD、约束违反量，支持暂停、继续和终止。
-- 运行回放：结束即可在内存回放；右侧环境按钮跳到末帧，时间轴按实际快照移动。
-- 批量实验：多选组件、扫描 n/tau、设置独立重复与并行数，同次重复使用相同 seed。
-- 结果对比：在同一问题与预算下比较环境末帧 IGD、可行率、同环境 PF、重复 MIGD。
-- 代码接入：写一个 `.py` 文件实现 response 或 step，不要求生成模板或补写 JSON。
-- 保存与导出：默认不保存运行数据；手动或明确开启自动保存，统计可导出 CSV/Excel。
-
-## 安装与启动
-
-### macOS
-
-使用 Python 3.12，在项目目录执行：
-
-```bash
-git clone https://github.com/Xieliuliuliu/FlexDMO.git
-cd FlexDMO
-python3.12 -m venv .venv
-.venv/bin/python -m pip install --only-binary=:all: -r requirements-macos.txt
-.venv/bin/python main.py
-```
-
-也可以双击 `Start-FlexDMO.command`。已有环境请先重新安装依赖再启动。
-自定义算法需要的额外包也安装到同一环境，不自动下载或安装。
-
-### Windows
-
-使用 Python 3.10，PowerShell 中执行：
-
-```powershell
-py -3.10 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe main.py
-```
-
-### Linux
-
-Ubuntu / Debian 若缺少图形运行库，先执行：
-
-```bash
-sudo apt-get update
-sudo apt-get install -y libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 fonts-noto-cjk
-```
-
-使用 Python 3.10，在图形会话中执行：
-
-```bash
-python3.10 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python main.py
-```
-
-桌面需要图形会话，纯 SSH 终端不能直接显示窗口。当前实机操作检查覆盖 macOS；
-其他系统安装后建议先做小规模试跑，不把单一系统检查当成全部平台保证。
-
-### 算法专用依赖：用到再装
-
-基础安装不包含 PyTorch 或 scikit-learn。启动、浏览算法、切换配置不会加载这些库；
-只有运行选中的算法时才导入。未安装时会提示所缺库和当前 Python 环境的安装命令，
-不会自动安装，也不影响其他算法。
-
-| 要运行的算法 | 额外依赖 | 依赖文件 |
-| --- | --- | --- |
-| DIP | PyTorch | `algorithms/response_strategy/DIP/requirements.txt` |
-| RNN | PyTorch | `algorithms/response_strategy/RNN/requirements.txt` |
-| FGTTMP | scikit-learn | `algorithms/response_strategy/FGTTMP/requirements.txt` |
-| PSCA | scikit-learn | `algorithms/response_strategy/PSCA/requirements.txt` |
-
-例如需要 DIP 时，在项目目录执行：
-
-```bash
-.venv/bin/python -m pip install -r algorithms/response_strategy/DIP/requirements.txt
-```
-
-Windows 将 `.venv/bin/python` 换成 `.\.venv\Scripts\python.exe`。安装后重新运行即可。
-默认的 D-NSGA-II-B / NSGAII / CDP1 不需要上述额外库。
+[返回项目首页](../README.md) · [安装与启动](installation.md) · [算法接口](../flexdmo_app/CODE_API.md)
 
 ## 第一次运行
 
 默认选择 `D-NSGA-II-B / NSGAII / CDP1`，使用小规模试跑：
-20 个体、6 决策变量、5 环境、变化间隔 3 代。点“开始 / 继续”即可。
+20 个体、6 决策变量、5 环境、变化间隔 3 代。点“开始运行”即可。
 这组参数用于检查操作流程，不是论文实验的推荐配置。
 
 “算法与问题”页选择组合，“参数”页调整输入。同一组件切换回来恢复上次输入，
@@ -170,7 +84,7 @@ def step(population, problem, scale: float = 0.05):
 使用小规模 CDP1、20 秒上限、不保存数据。运行不是安全沙箱，只用可信代码；
 额外依赖不会自动安装。返回值检查尺寸、有限性和边界，错误保留文件与实际行号。
 
-[完整代码接口](flexdmo_app/CODE_API.md) 包含必填参数、类接口、评价预算和辅助模块说明。
+[完整代码接口](../flexdmo_app/CODE_API.md) 包含必填参数、类接口、评价预算和辅助模块说明。
 
 ## 内置组件与研究边界
 
@@ -196,7 +110,7 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s flexdmo_app/t
 .venv/bin/python -m flexdmo_app.code_smoke
 ```
 
-[使用说明](flexdmo_app/README.md) · [本轮变更](CHANGELOG.md) · [官网文档](https://flexdmo.cn)
+[使用说明](../flexdmo_app/README.md) · [更新记录](../CHANGELOG.md) · [官网文档](https://flexdmo.cn)
 
 文档截图来自真实小规模运行，不是算法性能证据。自动测试检查运行链路，不能代替论文实验核验。
 

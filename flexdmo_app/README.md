@@ -1,7 +1,7 @@
 # FlexDMO 使用说明
 
 安装后运行 `python main.py`，macOS 可双击 `Start-FlexDMO.command`。
-安装命令见项目根目录的 [readme.md](../readme.md)。
+安装命令见[安装指南](../docs/installation.md)，平台概览见 [README](../README.md)。
 
 ## 运行与界面
 
