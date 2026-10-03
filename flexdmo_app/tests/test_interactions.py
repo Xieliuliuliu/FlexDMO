@@ -86,7 +86,7 @@ class InteractionTests(unittest.TestCase):
         from flexdmo_app.component_ui import ComponentDialog
         dialog = ComponentDialog(self.window.refresh_registry, self.window)
         self.window.show()
-        boxes = list(self.window.selectors.values()) + [self.window.mode_combo,
+        boxes = [self.window.mode_combo,
                 self.window.speed_combo, self.window.batch.preset, dialog.kind]
         try:
             for combo in boxes:
@@ -123,18 +123,17 @@ class InteractionTests(unittest.TestCase):
             dialog.close()
             self.window.switch_workspace(0)
 
-    def test_dropdown_keyboard_selection_uses_correct_algorithm(self):
+    def test_shared_selector_keyboard_selection_uses_correct_algorithm(self):
         self.window.show()
         self.app.processEvents()
-        combo = self.window.selectors["search"]
-        self.assertEqual(combo.currentData()["name"], "NSGAII")
-        combo.showPopup()
+        selector = self.window.selectors["search"]
+        self.assertEqual(selector.currentData()["name"], "NSGAII")
+        control = selector.currentItem().control
+        control.setFocus()
+        QTest.keyClick(control, Qt.Key.Key_Down)
         self.app.processEvents()
-        QTest.keyClick(combo.view(), Qt.Key.Key_Down)
-        QTest.keyClick(combo.view(), Qt.Key.Key_Return)
-        self.app.processEvents()
-        self.assertEqual(combo.currentData()["name"], "RMMEDA")
-        self.assertEqual(self.window.selected["search"]["name"], "RMMEDA")
+        self.assertEqual(selector.currentData()["name"], "SPEA2")
+        self.assertEqual(self.window.selected["search"]["name"], "SPEA2")
         self.assertEqual(self.window.parameter_fields["problem"]["solution_num"].text(), "20")
 
     def test_rerun_archives_dirty_result_before_launch_without_prompt(self):

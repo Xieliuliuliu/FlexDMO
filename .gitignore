@@ -58,6 +58,8 @@ results/
 # Files imported by users are local research code, not bundled components.
 /flexdmo_app/plugins/response_strategy/
 /flexdmo_app/plugins/search_algorithm/
+# Temporary algorithm fixtures created by regression tests.
+/flexdmo_app/plugins/_test_*/
 
 # Local caches and temporary exports (keep results_output source tracked)
 .pytest_cache/

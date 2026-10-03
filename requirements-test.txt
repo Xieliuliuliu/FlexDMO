@@ -1,0 +1,6 @@
+# Full algorithm suite for contributors and CI, not the desktop installation.
+-r requirements.txt
+-r algorithms/response_strategy/DIP/requirements.txt
+-r algorithms/response_strategy/RNN/requirements.txt
+-r algorithms/response_strategy/FGTTMP/requirements.txt
+-r algorithms/response_strategy/PSCA/requirements.txt

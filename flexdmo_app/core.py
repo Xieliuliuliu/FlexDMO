@@ -12,6 +12,7 @@ import numpy as np
 
 from components.Population import Population
 from utils import information_parser as catalog
+from .dependencies import IMPORTS, check_dependencies, missing_dependency
 
 ROOT = Path(__file__).resolve().parents[1]
 KINDS = ("dynamic", "search", "problem")
@@ -60,6 +61,8 @@ def records(errors=None):
             info = json.loads((Path(record["folder_name"]) / "info.json").read_text(encoding="utf-8"))
             labels = info.get("parameter_labels", {})
             record["parameter_labels"] = labels if isinstance(labels, dict) else {}
+            if isinstance(info.get("publication_type"), str):
+                record["publication_type"] = info["publication_type"]
     return result
 
 
@@ -76,14 +79,20 @@ def defaults(record):
 
 
 def registered_class(record):
-    if record.get("format") == "python-file":
-        from .plugin_runtime import load_code_class
-        return load_code_class(record)
-    # Only load modules from the repository's discovered registry, never a path
-    # supplied by a result file. Package imports preserve relative-import support.
-    folder = Path(record["folder_name"]).resolve()
-    module_name = ".".join(folder.relative_to(ROOT).parts) + ".main"
-    return getattr(importlib.import_module(module_name), folder.name)
+    check_dependencies(record)
+    try:
+        if record.get("format") == "python-file":
+            from .plugin_runtime import load_code_class
+            return load_code_class(record)
+        # Only load modules from the repository's discovered registry, never a
+        # path supplied by a result file. Preserve relative-import support.
+        folder = Path(record["folder_name"]).resolve()
+        module_name = ".".join(folder.relative_to(ROOT).parts) + ".main"
+        return getattr(importlib.import_module(module_name), folder.name)
+    except ModuleNotFoundError as error:
+        if error.name in IMPORTS.values():
+            raise missing_dependency(record, error.name) from error
+        raise
 
 
 def parameter_text(value, spec=None):

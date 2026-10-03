@@ -66,6 +66,28 @@ python3.10 -m venv .venv
 桌面需要图形会话，纯 SSH 终端不能直接显示窗口。当前实机操作检查覆盖 macOS；
 其他系统安装后建议先做小规模试跑，不把单一系统检查当成全部平台保证。
 
+### 算法专用依赖：用到再装
+
+基础安装不包含 PyTorch 或 scikit-learn。启动、浏览算法、切换配置不会加载这些库；
+只有运行选中的算法时才导入。未安装时会提示所缺库和当前 Python 环境的安装命令，
+不会自动安装，也不影响其他算法。
+
+| 要运行的算法 | 额外依赖 | 依赖文件 |
+| --- | --- | --- |
+| DIP | PyTorch | `algorithms/response_strategy/DIP/requirements.txt` |
+| RNN | PyTorch | `algorithms/response_strategy/RNN/requirements.txt` |
+| FGTTMP | scikit-learn | `algorithms/response_strategy/FGTTMP/requirements.txt` |
+| PSCA | scikit-learn | `algorithms/response_strategy/PSCA/requirements.txt` |
+
+例如需要 DIP 时，在项目目录执行：
+
+```bash
+.venv/bin/python -m pip install -r algorithms/response_strategy/DIP/requirements.txt
+```
+
+Windows 将 `.venv/bin/python` 换成 `.\.venv\Scripts\python.exe`。安装后重新运行即可。
+默认的 D-NSGA-II-B / NSGAII / CDP1 不需要上述额外库。
+
 ## 第一次运行
 
 默认选择 `D-NSGA-II-B / NSGAII / CDP1`，使用小规模试跑：
@@ -102,8 +124,10 @@ python3.10 -m venv .venv
 
 ## 批量实验与对比
 
-顶部“批量实验”勾选组件。n/tau 支持 `5,10` 或 `5:15:5`；
-重复使用起始 seed、seed+1…，同次重复的所有组合使用相同 seed。
+顶部“批量实验”勾选组件。
+测试页和实验页共用组件选择器，分别采用单选和多选。
+动态策略与搜索算法按年份从新到旧排列，可输入名称或年份筛选；筛选后已勾选算法仍计入实验。
+n/tau 支持 `5,10` 或 `5:15:5`；重复使用起始 seed、seed+1…，同次重复的所有组合使用相同 seed。
 先“更新任务”检查数量，再“开始实验”；启动时按可见配置重新生成，不运行过期计划。
 
 默认并行 1，上限 8；任务上限 10,000。更多并行不一定更快，特别是有大量历史或训练模型的算法。
@@ -164,6 +188,7 @@ CDP1–CDP6 是本项目动态约束套件，不宣称是同名标准论文基�
 ## 检查与文档
 
 ```bash
+# 完整算法测试需先安装上表中的算法专用依赖；CI 使用 requirements-test.txt。
 MPLBACKEND=Agg .venv/bin/python -m unittest discover -s tests
 QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s flexdmo_app/tests
 # 以下需要 macOS 桌面会话

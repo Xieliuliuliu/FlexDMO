@@ -6,12 +6,15 @@ import os
 from PySide6.QtCore import Qt, Signal, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QDialog, QFileDialog,
-    QFormLayout, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
+    QFormLayout, QHBoxLayout, QLabel, QLineEdit,
     QMessageBox, QPushButton, QProgressBar, QScrollArea, QSpinBox, QSplitter,
     QTabWidget, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
 
 from .batch_runner import BatchRunner
 from .component_ui import ParameterDialog
+from .component_choices import (component_year as algorithm_year, component_sort_key as algorithm_sort_key,
+                                ordered_registry)
+from .component_selector import ComponentSelector
 from .core import ROOT, records
 from .experiments import build_plan, grouped_statistics, task_row
 from .widgets import ChoiceBox as QComboBox
@@ -36,7 +39,7 @@ class BatchWidget(QWidget):
     def __init__(self, test_window, parent=None):
         super().__init__(parent)
         self.test_window = test_window
-        self.registry = records()
+        self.registry = ordered_registry(records())
         self.profiles = {}
         self.tasks = []
         self.items = {}
@@ -59,19 +62,15 @@ class BatchWidget(QWidget):
         self.config_controls = config
         self.choice_tabs = QTabWidget()
         self.lists = {}
+        self.filters = {}
         for kind, title in (("dynamic", "动态策略"), ("search", "搜索算法"), ("problem", "问题")):
             tab = QWidget()
             tab_layout = QVBoxLayout(tab)
-            filter_box = QLineEdit()
-            filter_box.setPlaceholderText("输入名称筛选")
-            tab_layout.addWidget(filter_box)
-            choices = QListWidget()
-            choices.setMinimumHeight(180)
-            choices.setMaximumHeight(230)
+            choices = ComponentSelector(kind, multiple=True)
+            self.filters[kind] = choices.filter_box
             self.lists[kind] = choices
             choices.itemChanged.connect(self.update_estimate)
             tab_layout.addWidget(choices)
-            filter_box.textChanged.connect(lambda text, items=choices: self.filter_items(items, text))
             row = QHBoxLayout()
             for text, checked in (("全选可见", True), ("清空", False)):
                 control = QPushButton(text)
@@ -193,27 +192,20 @@ class BatchWidget(QWidget):
     def refresh_registry(self):
         if self.runner.active:
             return
-        self.registry = records()
+        self.registry = ordered_registry(records())
         for kind, choices in self.lists.items():
             previous = {choices.item(i).data(Qt.ItemDataRole.UserRole)["folder_name"] for i in range(choices.count())
                         if choices.item(i).checkState() == Qt.CheckState.Checked}
             first = choices.count() == 0
-            choices.blockSignals(True)
-            choices.clear()
-            for record in self.registry[kind]:
-                item = QListWidgetItem(record["name"] + (" · 起步模板" if record.get("template") else ""), choices)
-                item.setData(Qt.ItemDataRole.UserRole, record)
-                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-                checked = record["folder_name"] in previous or (first and record["name"] == self.test_window.selected[kind]["name"])
-                item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
-                if checked:
-                    choices.setCurrentItem(item)
-            choices.blockSignals(False)
+            current = choices.currentData()
+            if first:
+                current = self.test_window.selected[kind]
+                previous = {current["folder_name"]}
+            choices.set_records(self.registry[kind], current=current["folder_name"] if current else None,
+                                checked=previous)
+            if first:
+                choices.scrollToTop()
         self.update_estimate()
-
-    def filter_items(self, items, text):
-        for i in range(items.count()):
-            items.item(i).setHidden(text.casefold() not in items.item(i).text().casefold())
 
     def check_all(self, kind, checked):
         choices = self.lists[kind]

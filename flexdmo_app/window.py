@@ -21,6 +21,9 @@ from .controller import RunController
 from .history import HistoryPanel
 from .parameter_ui import parameter_field
 from .widgets import ChoiceBox as QComboBox
+from .component_choices import ordered_registry
+from .component_selector import ComponentSelector
+from .dependencies import check_dependencies
 from .core import ROOT, defaults, load_frames, parameter_label, parse_parameters, records, save_frames
 
 STATUS = {"idle": "待运行", "running": "运行中", "paused": "暂停中",
@@ -41,7 +44,7 @@ class FlexDMOWindow(QMainWindow):
         self.setWindowTitle("FlexDMO")
         self.resize(1360, 860)
         self.setMinimumSize(700, 520)
-        self.registry = records()
+        self.registry = ordered_registry(records())
         self.frames = []
         self.index = -1
         self.dirty = False
@@ -224,17 +227,10 @@ class FlexDMOWindow(QMainWindow):
             raise ValueError("任务运行期间不能刷新组件")
         self._remember_parameters()
         errors = []
-        registry = records(errors)
+        registry = ordered_registry(records(errors))
         for kind, selector in self.selectors.items():
             previous = self.selected[kind]["folder_name"]
-            selector.blockSignals(True)
-            selector.clear()
-            for record in registry[kind]:
-                suffix = (f" · {record['year']}" if record.get("year") else "") if kind != "problem" else f" · {'有约束' if record['constraints'] else '无约束'}"
-                selector.addItem(record["name"] + suffix, record)
-            selected = next((i for i, record in enumerate(registry[kind]) if record["folder_name"] == previous), 0)
-            selector.setCurrentIndex(selected)
-            selector.blockSignals(False)
+            selector.set_records(registry[kind], current=previous)
         self.registry = registry
         self._build_parameter_form()
         self.batch.refresh_registry()
@@ -250,6 +246,7 @@ class FlexDMOWindow(QMainWindow):
         self.settings_tabs = QTabWidget()
         choices = QWidget()
         layout = QVBoxLayout(choices)
+        layout.setContentsMargins(6, 6, 6, 6)
         layout.setSpacing(14)
         self.selectors = {}
         self.selected = {}
@@ -258,15 +255,9 @@ class FlexDMOWindow(QMainWindow):
                                        ("problem", "测试问题", "CDP1")):
             group = QGroupBox(title)
             content = QVBoxLayout(group)
-            selector = QComboBox()
-            selector.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-            selector.setMinimumContentsLength(12)
-            for record in self.registry[kind]:
-                suffix = ((f" · {record['year']}" if record.get("year") else "") if kind != "problem" else
-                          f" · {'有约束' if record['constraints'] else '无约束'}")
-                selector.addItem(record["name"] + suffix, record)
-            chosen = next((i for i, r in enumerate(self.registry[kind]) if r["name"] == preferred), 0)
-            selector.setCurrentIndex(chosen)
+            selector = ComponentSelector(kind)
+            chosen = next((r for r in self.registry[kind] if r["name"] == preferred), self.registry[kind][0])
+            selector.set_records(self.registry[kind], current=chosen["folder_name"])
             self.selectors[kind] = selector
             content.addWidget(selector)
             layout.addWidget(group)
@@ -283,7 +274,11 @@ class FlexDMOWindow(QMainWindow):
         options.addWidget(self.history_policy)
         layout.addWidget(replay_options)
         layout.addStretch()
-        self.settings_tabs.addTab(choices, "算法与问题")
+        choices_scroll = QScrollArea()
+        choices_scroll.setWidgetResizable(True)
+        choices_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        choices_scroll.setWidget(choices)
+        self.settings_tabs.addTab(choices_scroll, "算法与问题")
         self.parameter_scroll = QScrollArea()
         self.parameter_scroll.setWidgetResizable(True)
         self.parameter_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
@@ -517,6 +512,10 @@ class FlexDMOWindow(QMainWindow):
             return
         try:
             request = self.request()
+            # Read only this combination's declarations. No optional algorithm
+            # modules are imported in the UI; missing libraries keep old results.
+            for record in request["records"].values():
+                check_dependencies(record)
             # Validate the lightweight problem before launching. Strategy and
             # search validation happens in the child (RNN can import PyTorch).
             from .core import registered_class
