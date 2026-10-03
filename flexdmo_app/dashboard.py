@@ -1,5 +1,5 @@
 """Synchronized multi-chart workspace with a scrollable narrow layout."""
-from PySide6.QtCore import QSize
+from PySide6.QtCore import QSize, QTimer
 from PySide6.QtWidgets import QGridLayout, QScrollArea, QVBoxLayout, QWidget
 from .charts import ChartWidget
 
@@ -7,7 +7,7 @@ from .charts import ChartWidget
 class ChartDashboard(QWidget):
     def __init__(self, primary, parent=None):
         super().__init__(parent)
-        self.charts = {"PF": primary, **{mode: ChartWidget() for mode in ("PS", "IGD", "CV")}}
+        self.charts = {"PF": primary, **{mode: ChartWidget(initial_mode=mode) for mode in ("PS", "IGD", "CV")}}
         self.mode = "ALL"
         self.request = ([], -1)
         layout = QVBoxLayout(self)
@@ -24,12 +24,17 @@ class ChartDashboard(QWidget):
         for chart in self.charts.values():
             chart.toolbar.setIconSize(QSize(18, 18))
         self._columns = None
+        self.layout_timer = QTimer(self)
+        self.layout_timer.setSingleShot(True)
+        self.layout_timer.setInterval(80)
+        self.layout_timer.timeout.connect(self._arrange)
         self._arrange()
 
     def visible_modes(self):
         return ["PF", "PS", "IGD"] if self.mode == "ALL" else ["PF", "PS", "IGD", "CV"] if self.mode == "ALL4" else [self.mode]
 
     def _arrange(self):
+        self.layout_timer.stop()
         multiple = self.mode in ("ALL", "ALL4")
         columns = 2 if multiple and self.width() >= 760 else 1
         self._columns = columns
@@ -65,4 +70,4 @@ class ChartDashboard(QWidget):
         if hasattr(self, "grid"):
             columns = 2 if self.mode in ("ALL", "ALL4") and self.width() >= 760 else 1
             if columns != self._columns:
-                self._arrange()
+                self.layout_timer.start()

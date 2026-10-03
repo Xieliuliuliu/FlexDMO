@@ -6,8 +6,8 @@ import threading
 import time
 from uuid import uuid4
 
-from PySide6.QtCore import Qt, QTimer, QUrl
-from PySide6.QtGui import QAction, QActionGroup, QColor, QDesktopServices, QPalette
+from PySide6.QtCore import Qt, QEvent, QTimer, QUrl
+from PySide6.QtGui import QAction, QActionGroup, QColor, QDesktopServices, QPalette, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QDockWidget, QFileDialog, QFormLayout, QGroupBox,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit,
@@ -60,6 +60,7 @@ class FlexDMOWindow(QMainWindow):
         self.parameter_cache = {}
         self.result_label_prefix = "结果："
         self.history_auto_hidden = False
+        self._interaction_until = 0.0
         self.controller = RunController(self)
         self.controller.frame_received.connect(self.receive_frame)
         self.controller.status_changed.connect(self.update_controls)
@@ -70,6 +71,8 @@ class FlexDMOWindow(QMainWindow):
         self._build_settings()
         self._build_center()
         self._build_history()
+        self.settings_dock.installEventFilter(self)
+        self.history_dock.installEventFilter(self)
         self.setCorner(Qt.Corner.TopLeftCorner, Qt.DockWidgetArea.LeftDockWidgetArea)
         self.setCorner(Qt.Corner.TopRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
         view_menu = self.menuBar().addMenu("视图")
@@ -124,14 +127,30 @@ class FlexDMOWindow(QMainWindow):
         self.setPalette(palette)
         self.setStyleSheet("""
             QMainWindow { background: #f2f5f9; }
-            QToolBar { background: white; border-bottom: 1px solid #dce3ed; padding: 8px; spacing: 8px; }
-            QDockWidget::title { background: #e8edf4; padding: 9px; font-weight: 600; }
-            QGroupBox { border: 1px solid #dce3ed; border-radius: 7px; margin-top: 14px; padding: 12px 8px 8px; }
+            QToolBar { background: white; border: 0; border-bottom: 1px solid #e3e9f0; padding: 8px; spacing: 8px; }
+            QToolBar QToolButton { border: 0; border-radius: 6px; padding: 6px 10px; color: #58687c; }
+            QToolBar QToolButton:hover { background: #edf6f8; color: #166373; }
+            QToolBar QToolButton:checked { background: #e3f4f5; color: #166373; font-weight: 600; }
+            QToolBar QToolButton:disabled { color: #9ba8bb; }
+            QDockWidget::title { background: #f2f5f9; padding: 10px; color: #58687c; font-weight: 600; }
+            QTabWidget::pane { border: 1px solid #e3e9f0; border-radius: 8px; background: white; }
+            QTabBar::tab { padding: 7px 10px; border: 0; color: #728097; background: transparent; }
+            QTabBar::tab:selected { background: #e3f4f5; color: #166373; border-radius: 5px; }
+            QTabBar::tab:hover { color: #166373; }
+            QScrollArea { border: 0; background: transparent; }
+            QScrollBar:vertical { background: transparent; width: 10px; margin: 2px; }
+            QScrollBar:horizontal { background: transparent; height: 10px; margin: 2px; }
+            QScrollBar::handle { background: #c4cfdb; border-radius: 3px; min-height: 28px; min-width: 28px; }
+            QScrollBar::handle:hover { background: #98aabd; }
+            QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
+            QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
+            QGroupBox { background: white; border: 1px solid #e3e9f0; border-radius: 9px; margin-top: 14px; padding: 12px 8px 8px; }
             QGroupBox::title { subcontrol-origin: margin; left: 10px; color: #304767; }
             QPushButton { color: #24334b; padding: 7px 12px; border: 1px solid #d4deea; border-radius: 5px; background: white; }
             QPushButton:hover { background: #edf6f8; border-color: #129bad; }
             QPushButton:disabled { color: #9ba8bb; background: #eff2f6; }
             QPushButton#primary { background: #129bad; color: white; border-color: #129bad; }
+            QPushButton#primary:hover { background: #108999; }
             QPushButton#danger { color: #bd4857; }
             QLineEdit, QComboBox { color: #24334b; padding: 5px; border: 1px solid #cfd9e6; border-radius: 4px; background: white; }
             QComboBox QAbstractItemView {
@@ -148,12 +167,25 @@ class FlexDMOWindow(QMainWindow):
             QTreeWidget { border: 1px solid #dce3ed; background: white; }
             QLabel#muted { color: #728097; }
             QLabel#brand { color: #11998e; font-size: 20px; font-weight: 700; }
+            QLabel#selection-summary { color: #24334b; font-weight: 600; padding: 4px 0; }
+            QLabel#run-status { color: #58687c; padding: 5px 10px; border-radius: 6px; background: #e8edf4; }
+            QLabel#run-status[state="running"] { color: #166373; background: #e3f4f5; }
+            QLabel#run-status[state="failed"] { color: #bd4857; background: #fcebed; }
+            QLabel#run-status[state="paused"] { color: #93671d; background: #fff3dc; }
+            QWidget#chart-card { background: white; border: 1px solid #e3e9f0; border-radius: 9px; }
+            QWidget#chart-card QToolBar { border: 0; padding: 3px; spacing: 2px; }
+            QWidget#chart-card QToolButton { padding: 3px 4px; }
         """)
 
     def _build_toolbar(self):
         toolbar = QToolBar("工作区", self)
         toolbar.setMovable(False)
         self.addToolBar(toolbar)
+        logo = QLabel()
+        logo.setPixmap(QPixmap(str(ROOT / "views/resources/images/icon.png")).scaled(
+            28, 28, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        logo.setAccessibleName("FlexDMO 标志")
+        toolbar.addWidget(logo)
         brand = QLabel("FlexDMO")
         brand.setObjectName("brand")
         toolbar.addWidget(brand)
@@ -370,6 +402,7 @@ class FlexDMOWindow(QMainWindow):
         layout.setContentsMargins(12, 12, 12, 8)
         header = QHBoxLayout()
         self.selection_label = QLabel()
+        self.selection_label.setObjectName("selection-summary")
         self.selection_label.setWordWrap(True)
         header.addWidget(self.selection_label, 1)
         self.mode_combo = QComboBox()
@@ -396,7 +429,9 @@ class FlexDMOWindow(QMainWindow):
         for control in (self.start_button, self.pause_button, self.stop_button):
             controls.addWidget(control)
         self.status_label = QLabel("待运行")
-        controls.addWidget(self.status_label, 1)
+        self.status_label.setObjectName("run-status")
+        controls.addWidget(self.status_label)
+        controls.addStretch()
         layout.addLayout(controls)
         self.progress = QProgressBar()
         self.progress.setRange(0, 1000)
@@ -592,7 +627,10 @@ class FlexDMOWindow(QMainWindow):
             return
         if self.workspace_stack.currentIndex() == 1:
             return  # Keep the newest frame pending while the charts are hidden.
+        if (self.controller.active or self.replay_timer.isActive()) and time.monotonic() < self._interaction_until:
+            return  # Keep all frames; defer only the live view while dragging.
         self.pending_draw = False
+        started = time.perf_counter()
         try:
             self.chart_dashboard.draw(self.frames, self.index, self.mode_combo.currentData())
             if self.index >= 0:
@@ -602,6 +640,15 @@ class FlexDMOWindow(QMainWindow):
                 self.frame_label.setText(f"环境 {frame['t']}  ·  评估 {frame['evaluate_times']:,}  ·  可行率 {ratio:.0%}")
                 policy = "仅保留环境末帧；不裁剪算法内部历史。" if frame.get("settings", {}).get("history_policy") == "environment" else "完整回放记录。"
                 self.frame_label.setToolTip(f"快照 {self.index + 1}/{len(self.frames)}；{policy}")
+            if self.controller.active:
+                charts = self.chart_dashboard.charts
+                visible = self.chart_dashboard.visible_modes()
+                cost = time.perf_counter() - started + sum(
+                    (charts["PF"] if len(visible) == 1 else charts[mode]).canvas.last_draw_seconds
+                    for mode in visible)
+                # Budget roughly a quarter of the GUI thread for plotting;
+                # computation and full replay history are never throttled.
+                self.render_timer.setInterval(min(400, max(100, int(cost * 4000))))
         except Exception as error:
             self.log(f"图表错误：{error}")
             self.statusBar().showMessage(f"图表无法显示：{error}")
@@ -611,6 +658,10 @@ class FlexDMOWindow(QMainWindow):
         self.view_status = status
         active = self.controller.active
         self.status_label.setText(STATUS.get(status, status))
+        if self.status_label.property("state") != status:
+            self.status_label.setProperty("state", status)
+            self.status_label.style().unpolish(self.status_label)
+            self.status_label.style().polish(self.status_label)
         self.start_button.setText("继续运行" if status == "paused" else
                                   "重新运行" if self.frames and not active else "开始运行")
         self.start_button.setEnabled(not self.io_busy and (not active or status == "paused"))
@@ -629,6 +680,7 @@ class FlexDMOWindow(QMainWindow):
             control.setEnabled(replay_allowed)
 
     def run_finished(self, status):
+        self.render_timer.setInterval(100)
         if status == "completed":
             self.progress.setValue(1000)
         elapsed = time.monotonic() - self.started_at if self.started_at else 0
@@ -755,6 +807,7 @@ class FlexDMOWindow(QMainWindow):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        self._interaction_until = time.monotonic() + 0.12
         if not hasattr(self, "history_dock"):
             return
         if hasattr(self, "workspace_stack") and self.workspace_stack.currentIndex() == 1:
@@ -765,6 +818,15 @@ class FlexDMOWindow(QMainWindow):
         elif self.width() >= 1150 and self.history_auto_hidden:
             self.history_dock.show()
             self.history_auto_hidden = False
+
+    def moveEvent(self, event):
+        super().moveEvent(event)
+        self._interaction_until = time.monotonic() + 0.12
+
+    def eventFilter(self, watched, event):
+        if event.type() in (QEvent.Type.Resize, QEvent.Type.Move):
+            self._interaction_until = time.monotonic() + 0.12
+        return super().eventFilter(watched, event)
 
     def closeEvent(self, event):
         if self.io_busy or self.batch.runner.exporting:
