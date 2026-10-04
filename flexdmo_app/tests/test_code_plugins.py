@@ -3,6 +3,7 @@ import json
 import multiprocessing
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 
 import main_qt  # Bootstrap reused scientific packages in the isolated Qt venv.
@@ -230,6 +231,25 @@ class Uncomputed(Algorithm):
         algorithm.optimize(problem, registered_class(record)(rate=0.2))
         self.assertTrue(problem.is_ended())
         self.assertEqual(set(algorithm.history["runtime"]), {0, 1})
+
+    def test_canceled_response_is_not_reevaluated_or_published_as_a_new_step_environment(self):
+        from tests.test_change_detection import ConstraintOnlyProblem
+
+        class CancelResponse:
+            def response(self, population, problem, algorithm):
+                algorithm.state.value = "stop"
+                self.evaluations_at_stop = problem.evaluate_time
+                return population.copy()
+
+        record = self.code("def step(population, problem): return population\n")
+        state = SimpleNamespace(value="running")
+        optimizer = registered_class(record)(state=state)
+        problem = ConstraintOnlyProblem()
+        response = CancelResponse()
+        optimizer.optimize(problem, response)
+        self.assertEqual(problem.t, 1)
+        self.assertEqual(problem.evaluate_time, response.evaluations_at_stop)
+        self.assertNotIn(1, optimizer.history["runtime"])
 
     def test_complete_optimize_class_keeps_history_and_runtime_controls(self):
         record = self.code('''from algorithms.search_algorithm.NSGA2.main import NSGA2

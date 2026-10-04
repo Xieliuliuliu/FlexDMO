@@ -1,0 +1,13 @@
+{
+  "name": "ADPS",
+  "year": 2026,
+  "publication_type": "公开2024预印本适配；未核验2026期刊最终版本",
+  "parameter_labels": {
+    "weight_step": "双域权重调整步长",
+    "cluster_passes": "在线聚类遍历次数",
+    "inverse_iterations": "目标逆映射迭代上限",
+    "inverse_step": "逆映射初始步长比例",
+    "perturbation_scale": "预测扰动上界比例",
+    "evaluation_batch_size": "响应评估批大小"
+  }
+}

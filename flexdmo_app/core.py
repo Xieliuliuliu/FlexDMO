@@ -61,6 +61,16 @@ def records(errors=None):
             info = json.loads((Path(record["folder_name"]) / "info.json").read_text(encoding="utf-8"))
             labels = info.get("parameter_labels", {})
             record["parameter_labels"] = labels if isinstance(labels, dict) else {}
+            # Built-in components can declare types just like code plugins.
+            # Their constructor owns the numeric domain; a shared parameter
+            # name must not force the same positive-only domain on every method.
+            specs = info.get("parameter_specs", {})
+            if isinstance(specs, dict):
+                typed = {key: spec for key, spec in specs.items()
+                         if isinstance(spec, dict) and spec.get("type")
+                         in {"int", "float", "bool", "str", "list", "dict", "tuple"}}
+                if typed:
+                    record["parameter_specs"] = typed
             if isinstance(info.get("publication_type"), str):
                 record["publication_type"] = info["publication_type"]
     return result

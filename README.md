@@ -114,6 +114,9 @@ Linux 安装、系统图形库及算法额外依赖见[安装指南](docs/instal
 
 | 策略 | 年份 | 方法 | 原始文献 |
 | --- | --- | --- | --- |
+| [VARE](algorithms/response_strategy/VARE) | 2026 | 向量自回归预测与环境感知变异 | [IEEE TEVC](https://doi.org/10.1109/TEVC.2025.3570116) |
+| [ADPS](algorithms/response_strategy/ADPS) | 2026 | 二阶导数与自适应双域预测 | [IEEE TEVC](https://doi.org/10.1109/TEVC.2025.3594549) |
+| [FCP](algorithms/response_strategy/FCP) | 2025 | 惩罚辅助聚类与多中心约束预测 | [IEEE TEVC](https://doi.org/10.1109/TEVC.2025.3551399) |
 | [LR-DMOEA](algorithms/response_strategy/LRDMOEA) | 2025 | 关键点相关性与线性回归预测 | [Algorithms](https://doi.org/10.3390/a18060372) |
 | [FGTTMP](algorithms/response_strategy/FGTTMP) | 2024 | 反馈引导迁移与趋势流形预测 | [IEEE TSMC: Systems](https://doi.org/10.1109/TSMC.2024.3443143) |
 | [PSCA](algorithms/response_strategy/PSCA) | 2024 | 联合子空间与相关性对齐 | [Complex & Intelligent Systems](https://doi.org/10.1007/s40747-024-01369-4) |
@@ -121,6 +124,8 @@ Linux 安装、系统图形库及算法额外依赖见[安装指南](docs/instal
 
 另提供 D-NSGA-II-A/B、DIP、MDA、MDP、RNN 和 NoResponse 基线。
 [算法目录与适配说明](docs/algorithms.md)区分原始方法、平台组件和实现约定。
+FCP、VARE、ADPS 均不需要额外的机器学习依赖。表中年份采用期刊卷期年份；
+VARE 与 ADPS 的实现分别依据作者公开版本和公开预印本适配，未宣称复现最终期刊版的全部实验。
 
 测试问题包括 DF、FDA、dMOP、DP、F、HE、JY、UDF，以及项目自定义的 CDP1–CDP6 动态约束套件。
 策略以可组合组件接入，论文方法的完整复现仍需核对原文参数、搜索算子、评价预算与实验设置。

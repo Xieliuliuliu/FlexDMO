@@ -134,6 +134,9 @@ Replay remains available in the current session; save results or export statisti
 
 | Strategy | Year | Approach | Original reference |
 | --- | --- | --- | --- |
+| [VARE](algorithms/response_strategy/VARE) | 2026 | Vector autoregression and environment-aware mutation | [IEEE TEVC](https://doi.org/10.1109/TEVC.2025.3570116) |
+| [ADPS](algorithms/response_strategy/ADPS) | 2026 | Second-order, adaptive dual-domain prediction | [IEEE TEVC](https://doi.org/10.1109/TEVC.2025.3594549) |
+| [FCP](algorithms/response_strategy/FCP) | 2025 | Penalty-assisted clustering and multicenter prediction | [IEEE TEVC](https://doi.org/10.1109/TEVC.2025.3551399) |
 | [LR-DMOEA](algorithms/response_strategy/LRDMOEA) | 2025 | Key-point correlations and linear regression | [Algorithms](https://doi.org/10.3390/a18060372) |
 | [FGTTMP](algorithms/response_strategy/FGTTMP) | 2024 | Feedback-guided transfer and trend manifold prediction | [IEEE TSMC: Systems](https://doi.org/10.1109/TSMC.2024.3443143) |
 | [PSCA](algorithms/response_strategy/PSCA) | 2024 | Joint subspace and correlation alignment | [Complex & Intelligent Systems](https://doi.org/10.1007/s40747-024-01369-4) |
@@ -141,6 +144,9 @@ Replay remains available in the current session; save results or export statisti
 
 Also included: D-NSGA-II-A/B, DIP, MDA, MDP, RNN, and the NoResponse baseline.
 See the [algorithm catalog and adaptation notes — Chinese](docs/algorithms.md).
+FCP, VARE, and ADPS require no additional machine-learning packages. Years refer to journal
+issues; VARE and ADPS are component adaptations based on the author's public version and
+the public preprint, respectively, not verified reproductions of all final journal experiments.
 
 Problem families include DF, FDA, dMOP, DP, F, HE, JY, and UDF, plus the project's
 CDP1–CDP6 dynamic constrained suite. Response methods are adapted as composable components;

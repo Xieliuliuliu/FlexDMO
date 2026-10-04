@@ -1,0 +1,8 @@
+{
+  "cluster_num": 10,
+  "max_iter": 100,
+  "crossover_eta": 20.0,
+  "mutation_eta": 20.0,
+  "diversity_floor": 0.02,
+  "evaluation_batch_size": 64
+}

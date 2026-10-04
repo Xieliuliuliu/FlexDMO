@@ -1,0 +1,6 @@
+{
+  "lag_order": 5,
+  "explained_variance": 0.8,
+  "regularization": 0.000001,
+  "history_length": 100
+}

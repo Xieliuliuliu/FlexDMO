@@ -1,0 +1,8 @@
+{
+  "weight_step": 0.02,
+  "cluster_passes": 3,
+  "inverse_iterations": 3,
+  "inverse_step": 0.2,
+  "perturbation_scale": 1.0,
+  "evaluation_batch_size": 128
+}

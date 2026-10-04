@@ -229,7 +229,7 @@ def getNonDominate(population: Population, type = 'population'):
 
 
 def detection(pop: Population, problem: Problem, number_detector):
-    """检测环境变化
+    """检测目标值或原始约束值的变化，不覆盖旧环境的种群记录。
     
     Args:
         pop: 当前种群
@@ -242,17 +242,35 @@ def detection(pop: Population, problem: Problem, number_detector):
     """
     if not pop.individuals:
         return 0
-        
-    seq = range(pop.n)
-    detector = random.sample(seq, min(number_detector, pop.n))
-    
-    for i in detector:
-        temp = pop.individuals[i]
-        f, _ = problem.evaluate(temp.X.reshape(1, -1), False)
-        
-        # 检查目标值是否发生变化
-        if not np.allclose(f[0], temp.F):
-            print("环境发生变化")
+    if not isinstance(number_detector, (int, np.integer)) or number_detector <= 0:
+        raise ValueError("检测个体数量必须为正整数")
+
+    detector = random.sample(range(pop.n), min(number_detector, pop.n))
+    decisions = np.asarray([pop.individuals[i].X for i in detector], dtype=float)
+    # 一次无计数评价最多推进一个待变化环境。检测不能增加搜索预算，
+    # 也不能将新环境数据写回历史个体，否则响应策略会丢失旧环境信息。
+    objectives, constraints = problem.evaluate(decisions, need_count=False)
+    for row, index in enumerate(detector):
+        individual = pop.individuals[index]
+        current_f = np.asarray(objectives[row], dtype=float)
+        previous_f = individual.F
+        if previous_f is None or current_f.shape != np.asarray(previous_f).shape:
             return 1
-            
+        if not np.allclose(current_f, previous_f):
+            return 1
+
+        current_g = None if constraints is None else np.asarray(constraints[row], dtype=float)
+        previous_g = None if individual.G is None else np.asarray(individual.G, dtype=float)
+        # None 与空向量均表示没有约束。非空约束的增加/删除同样是变化。
+        current_g = np.empty(0) if current_g is None else current_g.reshape(-1)
+        previous_g = np.empty(0) if previous_g is None else previous_g.reshape(-1)
+        if current_g.shape != previous_g.shape:
+            return 1
+        if not np.allclose(current_g, previous_g, rtol=1e-5, atol=1e-12):
+            return 1
+        # 相对误差容限不能掩盖可行性翻转，即使违反量很小。
+        current_cv = float(np.maximum(current_g, 0.0).sum())
+        previous_cv = float(np.maximum(previous_g, 0.0).sum())
+        if (current_cv <= 1e-12) != (previous_cv <= 1e-12):
+            return 1
     return 0

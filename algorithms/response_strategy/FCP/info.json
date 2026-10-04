@@ -1,0 +1,14 @@
+{
+  "name": "FCP",
+  "year": 2025,
+  "publication_type": "journal",
+  "doi": "10.1109/TEVC.2025.3551399",
+  "parameter_labels": {
+    "cluster_num": "惩罚空间聚类数",
+    "max_iter": "聚类最大迭代次数",
+    "crossover_eta": "初始化交叉分布指数",
+    "mutation_eta": "初始化变异分布指数",
+    "diversity_floor": "退化情形多样性下限",
+    "evaluation_batch_size": "响应评估批大小"
+  }
+}

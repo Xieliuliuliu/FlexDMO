@@ -1,0 +1,13 @@
+{
+  "year": 2026,
+  "name": "VARE",
+  "parameter_specs": {
+    "regularization": {"type": "float"}
+  },
+  "parameter_labels": {
+    "lag_order": "VAR 滞后阶数",
+    "explained_variance": "PCA 累计解释方差比例",
+    "regularization": "VAR 高斯先验正则强度",
+    "history_length": "环境历史最大长度"
+  }
+}

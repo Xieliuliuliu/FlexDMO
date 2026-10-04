@@ -24,6 +24,8 @@ class RMMEDA(Algorithm):
                 max(1, int(0.1 * problem.solution_num)),
             ) == 1:
                 pop = response_strategy.response(pop, problem, self)
+                if not self.control_process():
+                    break
                 self.collect_information(pop, problem, response_strategy)  # 收集运行信息
                 continue
             # 生成子代

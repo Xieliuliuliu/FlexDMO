@@ -72,6 +72,7 @@ python3.12 -m venv .venv
 
 Windows 将 `.venv/bin/python` 换成 `.\.venv\Scripts\python.exe`。安装后重新运行即可。
 默认的 D-NSGA-II-B / NSGAII / CDP1 不需要上述额外库。
+FCP、VARE 和 ADPS 使用 NumPy 实现，也不需要安装上述额外库。
 
 DIP 和 RNN 使用 PyTorch 2.14。在 macOS 上，该版本的官方安装包要求
 Apple Silicon 和 macOS 14 或更新系统；不满足时仍可使用不依赖 PyTorch 的算法。

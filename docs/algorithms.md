@@ -16,6 +16,45 @@ FlexDMO 将环境响应与环境内搜索分成两个组件。组合一个论文
 
 ## 文献响应策略
 
+### VARE · 2026
+
+Jiang, Wang, Hu, Zhang & Yang. *Dynamic Multiobjective Optimisation Based on Vector
+Autoregressive Evolution*. IEEE TEVC, 30(2), 717–731.
+[DOI](https://doi.org/10.1109/TEVC.2025.3570116) ·
+[作者实现](https://github.com/chang88ye/VARE) · [适配说明](algorithms/vare.md) ·
+[平台实现](../algorithms/response_strategy/VARE/main.py)
+
+提供向量自回归预测、降维与环境感知变异的响应组件。
+来源为作者公开的预印本及对应实现；期刊卷期年份为 2026，但公开预印本始于 2023。
+具体参数、历史启动条件与相对完整优化器的差异见适配说明。
+
+### ADPS · 2026
+
+Lei, Li, Stolkin & Feng. *An Adaptive Dual-Domain Prediction Strategy Based on Second-Order
+Derivatives for Dynamic Multiobjective Optimization*. IEEE TEVC, 30(3), 911–924.
+[DOI](https://doi.org/10.1109/TEVC.2025.3594549) ·
+[公开预印本 v1](https://arxiv.org/html/2410.05787v1) · [适配说明](algorithms/adps.md) ·
+[平台实现](../algorithms/response_strategy/ADPS/main.py)
+
+依据公开预印本实现双域聚类、二阶预测、自适应分配与目标空间到决策空间的映射。
+映射中的实际函数评价计入预算；控制映射开销的参数也应随实验结果记录。
+预印本存在版本与符号差异，目前不宣称与最终期刊版本完全一致。
+
+### FCP · 2025
+
+Gong, Xia, Zou, Hou & Liu. *Enhancing Dynamic Constrained Multiobjective Optimization
+With Multicenters-Based Prediction*. IEEE TEVC, 29(5), 1604–1618.
+[DOI](https://doi.org/10.1109/TEVC.2025.3551399) ·
+[作者实现](https://github.com/zoujuan1/Q-Gong-FCP) · [适配说明](algorithms/fcp.md) ·
+[平台实现](../algorithms/response_strategy/FCP/main.py)
+
+参考作者公开实现，以惩罚辅助聚类、多中心位移和中心间距采样生成新环境种群。
+平台将响应过程与静态搜索分离，原算法的环境选择规则不因此自动替换当前搜索组件。
+组合实验与原论文完整算法之间的边界见适配说明。
+
+以上三个组件只使用基础 NumPy 环境；测试与批量实验页自动发现相同组件，按年份排序。
+变化检测同时比较目标与原始约束值，避免漏掉仅约束变化、总违反量不变的情况。
+
 ### LR-DMOEA · 2025
 
 Ma, Sang, Xu & Wang. *A Linear Regression Prediction-Based Dynamic Multi-Objective Evolutionary

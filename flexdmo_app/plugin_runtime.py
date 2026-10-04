@@ -166,6 +166,8 @@ def load_code_class(record):
                 if problem.need_change:
                     problem.evaluate(population[0].X.reshape(1, -1), need_count=False)
                     population = checked_population(response_strategy.response(population, problem, self), problem, "动态响应")
+                    if not self.control_process():
+                        break
                     _evaluate(population, problem, record["name"], need_count=False)
                     self.collect_information(population, problem, response_strategy)
                     continue

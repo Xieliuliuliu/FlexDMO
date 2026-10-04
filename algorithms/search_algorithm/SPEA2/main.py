@@ -20,6 +20,8 @@ class SPEA2(NSGA2):
                 population, problem, max(1, int(0.1 * problem.solution_num))
             ):
                 population = response_strategy.response(population, problem, self)
+                if not self.control_process():
+                    break
                 self.collect_information(population, problem, response_strategy)
                 continue
 

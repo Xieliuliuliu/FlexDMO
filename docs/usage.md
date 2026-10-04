@@ -92,7 +92,7 @@ def step(population, problem, scale: float = 0.05):
 ## 内置组件与研究边界
 
 搜索算法：NSGA-II、RMMEDA、SPEA2、MOEA/D。
-动态策略：NoResponse、DIP、MDA、MDP、RNN、D-NSGA-II-A/B、PPS、FGTTMP、PSCA、LR-DMOEA。
+动态策略：NoResponse、DIP、MDA、MDP、RNN、D-NSGA-II-A/B、PPS、FGTTMP、PSCA、LR-DMOEA、FCP、VARE、ADPS。
 问题：DF、FDA、dMOP、DP、F、HE、JY、UDF，以及 CDP1–CDP6。
 
 CDP1–CDP6 是本项目动态约束套件，不宣称是同名标准论文基准。

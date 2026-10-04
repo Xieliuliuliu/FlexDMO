@@ -26,6 +26,8 @@ class NSGA2(Algorithm):
                 max(1, int(0.1 * problem.solution_num)),
             ) == 1:
                 pop = response_strategy.response(pop, problem, self)
+                if not self.control_process():
+                    break  # 取消响应时不能将旧环境种群记为新环境快照。
                 self.collect_information(pop, problem, response_strategy)  # 收集运行信息
                 continue
             # 生成子代
