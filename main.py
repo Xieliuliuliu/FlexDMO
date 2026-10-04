@@ -8,6 +8,8 @@ ROOT = Path(__file__).resolve().parent
 
 
 def main():
+    if sys.version_info < (3, 12):
+        raise SystemExit("FlexDMO 需要 Python 3.12 或更新版本，请按安装指南重新创建虚拟环境。")
     os.chdir(ROOT)
     from PySide6.QtWidgets import QApplication
     from flexdmo_app.window import FlexDMOWindow

@@ -1,9 +1,2 @@
-# macOS / Python 3.12 scientific and desktop dependencies.
--r flexdmo_app/requirements.txt
-matplotlib>=3.9,<4
-numpy>=1.26,<3
-Pillow==12.3.0
-psutil>=5.9.4,<8
-pandas>=2.2,<3
-scipy>=1.12,<2
-openpyxl>=3.1,<4
+# macOS uses the same tested desktop dependencies as Windows and Linux.
+-r requirements.txt
