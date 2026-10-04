@@ -59,6 +59,8 @@ FlexDMO 面向动态多目标优化研究，将**搜索算法、环境响应策�
 
 ## 快速开始
 
+使用 Python 3.12 或更新版本；持续集成在 Python 3.12 上检查 Windows、macOS 和 Linux。
+
 先克隆仓库：
 
 ```bash
@@ -80,10 +82,10 @@ python3.12 -m venv .venv
 </details>
 
 <details>
-<summary><strong>Windows · Python 3.10 / PowerShell</strong></summary>
+<summary><strong>Windows · Python 3.12 / PowerShell</strong></summary>
 
 ```powershell
-py -3.10 -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe main.py
 ```

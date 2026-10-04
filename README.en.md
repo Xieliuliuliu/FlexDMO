@@ -62,6 +62,8 @@ feasibility, same-environment PF, and repeated MIGD. Each curve retains its indi
 
 ## Quick start
 
+Use Python 3.12 or newer. Continuous integration tests Windows, macOS, and Linux on Python 3.12.
+
 ```bash
 git clone https://github.com/Xieliuliuliu/FlexDMO.git
 cd FlexDMO
@@ -81,10 +83,10 @@ After installation, you can also launch `Start-FlexDMO.command`.
 </details>
 
 <details>
-<summary><strong>Windows · Python 3.10 / PowerShell</strong></summary>
+<summary><strong>Windows · Python 3.12 / PowerShell</strong></summary>
 
 ```powershell
-py -3.10 -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe main.py
 ```
@@ -92,14 +94,14 @@ py -3.10 -m venv .venv
 </details>
 
 <details>
-<summary><strong>Linux · Python 3.10 / graphical session</strong></summary>
+<summary><strong>Linux · Python 3.12 / graphical session</strong></summary>
 
 On Ubuntu or Debian, install the graphical system libraries first:
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 fonts-noto-cjk
-python3.10 -m venv .venv
+python3.12 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python main.py
 ```

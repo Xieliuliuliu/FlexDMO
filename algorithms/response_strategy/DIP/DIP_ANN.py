@@ -79,10 +79,11 @@ def train(model: ANN, input, target, X_Low, X_Upp):
 
 def predict_by_ann(model: ANN, input, X_Low, X_Upp):
     input_norm = torch.Tensor(data_normalize(input, X_Low, X_Upp)).to(model.device)
-    logits = model(input_norm)
-    result = inverse_data(logits.detach().cpu(), X_Low, X_Upp)
-    result = result.numpy()
-    return result
+    with torch.no_grad():
+        logits = model(input_norm)
+    # Restore bounds in NumPy after leaving Torch, rather than relying on
+    # NumPy's deprecated wrapping of Tensor arithmetic with array bounds.
+    return inverse_data(logits.cpu().numpy(), X_Low, X_Upp)
 
 class mydataset(Dataset):
     def __init__(self, input, target):

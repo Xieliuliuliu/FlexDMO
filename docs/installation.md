@@ -2,6 +2,10 @@
 
 [返回项目首页](../README.md) · [使用手册](usage.md)
 
+所有平台使用 Python 3.12 或更新版本，建议使用 Python 3.12。
+Windows、macOS 和 Linux 使用同一套基础依赖，持续集成检查三平台的安装、测试与依赖安全。
+从旧版升级时，先用 Python 3.12 重新创建虚拟环境，再安装依赖，避免混用旧二进制包。
+
 ## macOS
 
 使用 Python 3.12，在项目目录执行：
@@ -19,10 +23,10 @@ python3.12 -m venv .venv
 
 ## Windows
 
-使用 Python 3.10，PowerShell 中执行：
+使用 Python 3.12，PowerShell 中执行：
 
 ```powershell
-py -3.10 -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe main.py
 ```
@@ -36,10 +40,10 @@ sudo apt-get update
 sudo apt-get install -y libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 fonts-noto-cjk
 ```
 
-使用 Python 3.10，在图形会话中执行：
+使用 Python 3.12，在图形会话中执行：
 
 ```bash
-python3.10 -m venv .venv
+python3.12 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python main.py
 ```
@@ -68,3 +72,6 @@ python3.10 -m venv .venv
 
 Windows 将 `.venv/bin/python` 换成 `.\.venv\Scripts\python.exe`。安装后重新运行即可。
 默认的 D-NSGA-II-B / NSGAII / CDP1 不需要上述额外库。
+
+DIP 和 RNN 使用 PyTorch 2.14。在 macOS 上，该版本的官方安装包要求
+Apple Silicon 和 macOS 14 或更新系统；不满足时仍可使用不依赖 PyTorch 的算法。

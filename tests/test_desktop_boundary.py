@@ -36,8 +36,28 @@ class DesktopBoundaryTests(unittest.TestCase):
     def test_base_requirements_do_not_pull_optional_algorithm_libraries(self):
         for name in ("requirements.txt", "requirements-macos.txt", "flexdmo_app/requirements.txt"):
             requirements = (ROOT / name).read_text().lower()
-            for library in ("ttkbootstrap", "torch", "scikit-learn"):
+            for library in ("ttkbootstrap", "torch", "scikit-learn", "psutil"):
                 self.assertNotIn(library, requirements, name)
+
+    def test_macos_uses_the_same_dependency_set(self):
+        requirements = (ROOT / "requirements-macos.txt").read_text().splitlines()
+        entries = [line.strip() for line in requirements
+                   if line.strip() and not line.lstrip().startswith("#")]
+        self.assertEqual(entries, ["-r requirements.txt"])
+
+    def test_unsupported_python_fails_before_loading_desktop_libraries(self):
+        self.child("""
+import main
+from unittest.mock import patch
+with patch.object(main.sys, "version_info", (3, 11, 0)):
+    try:
+        main.main()
+    except SystemExit as error:
+        assert "Python 3.12" in str(error)
+    else:
+        raise AssertionError("Older Python must receive an actionable error")
+print("BOUNDARY_OK")
+""", {"PySide6", "torch", "sklearn"})
 
     def child(self, code, blocked):
         blocker = f"""
