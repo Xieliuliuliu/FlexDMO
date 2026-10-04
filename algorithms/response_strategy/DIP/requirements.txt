@@ -1,2 +1,2 @@
 # Install only when running DIP.
-torch==2.14.0
+torch==2.14.1
