@@ -127,7 +127,7 @@ Linux 安装、系统图形库及算法额外依赖见[安装指南](docs/instal
 FCP、VARE、ADPS 均不需要额外的机器学习依赖。表中年份采用期刊卷期年份；
 VARE 与 ADPS 的实现分别依据作者公开版本和公开预印本适配，未宣称复现最终期刊版的全部实验。
 
-测试问题包括 DF、FDA、dMOP、DP、F、HE、JY、UDF，以及项目自定义的 CDP1–CDP6 动态约束套件。
+测试问题按系列组织：CDP1–CDP6、DP1–DP10、DF1–DF14、DCF1–DCF10、DCP1–DCP9、DCTP1–DCTP8，共 57 个问题。目录布局、默认维数与兼容导入见 [Benchmark 说明](docs/benchmark-layout.md)。
 策略以可组合组件接入，论文方法的完整复现仍需核对原文参数、搜索算子、评价预算与实验设置。
 
 ## 接入自己的算法

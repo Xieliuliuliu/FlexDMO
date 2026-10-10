@@ -1,0 +1,9 @@
+{
+  "family": "DCP",
+  "category": "Constrained",
+  "constraints": 1,
+  "objectives": 2,
+  "description": "DCP 系列动态约束多目标测试问题 DCP7（从 DynOptForge 追加）",
+  "source_platform": "DynOptForge",
+  "name": "DCP7"
+}

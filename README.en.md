@@ -148,8 +148,12 @@ FCP, VARE, and ADPS require no additional machine-learning packages. Years refer
 issues; VARE and ADPS are component adaptations based on the author's public version and
 the public preprint, respectively, not verified reproductions of all final journal experiments.
 
-Problem families include DF, FDA, dMOP, DP, F, HE, JY, and UDF, plus the project's
-CDP1–CDP6 dynamic constrained suite. Response methods are adapted as composable components;
+The 57 problems are grouped into six directories: CDP1–CDP6, DP1–DP10,
+DF1–DF14, DCF1–DCF10, DCP1–DCP9, and DCTP1–DCTP8.
+Existing implementations are preserved and 40 missing problems are added from DynOptForge.
+See [benchmark layout](docs/benchmark-layout.md) for independent per-problem parameters,
+compatible legacy imports, and DCTP's required 30-dimensional settings.
+Response methods are adapted as composable components;
 reproducing a paper's complete algorithm requires matching its operators, parameters,
 evaluation budgets, and experiment settings.
 

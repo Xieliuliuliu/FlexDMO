@@ -93,7 +93,7 @@ def step(population, problem, scale: float = 0.05):
 
 搜索算法：NSGA-II、RMMEDA、SPEA2、MOEA/D。
 动态策略：NoResponse、DIP、MDA、MDP、RNN、D-NSGA-II-A/B、PPS、FGTTMP、PSCA、LR-DMOEA、FCP、VARE、ADPS。
-问题：DF、FDA、dMOP、DP、F、HE、JY、UDF，以及 CDP1–CDP6。
+问题：CDP1–CDP6、DP1–DP10、DF1–DF14、DCF1–DCF10、DCP1–DCP9、DCTP1–DCTP8。详见 [Benchmark 系列目录](benchmark-layout.md)；DCTP 默认且固定为 30 维，DF10–DF14 为三目标。
 
 CDP1–CDP6 是本项目动态约束套件，不宣称是同名标准论文基准。
 论文策略在框架内拆分、组合运行，不自动等同于原论文的完整算法与实验设置。

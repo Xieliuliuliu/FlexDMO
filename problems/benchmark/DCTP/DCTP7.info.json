@@ -1,0 +1,11 @@
+{
+  "family": "DCTP",
+  "category": "Constrained",
+  "constraints": 1,
+  "objectives": 2,
+  "description": "DCTP 系列动态约束多目标测试问题 DCTP7（从 DynOptForge 追加）",
+  "source_platform": "DynOptForge",
+  "name": "DCTP7",
+  "paper": "Azzouz et al. (2015)",
+  "visualization": "feasible region, infeasible region, UPF and CPF"
+}

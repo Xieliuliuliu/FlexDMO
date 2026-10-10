@@ -1,0 +1,9 @@
+{
+  "family": "DF",
+  "category": "Unconstrained",
+  "constraints": 0,
+  "objectives": 2,
+  "description": "DF 系列动态多目标测试问题 DF2（从 DynOptForge 追加）",
+  "source_platform": "DynOptForge",
+  "name": "DF2"
+}

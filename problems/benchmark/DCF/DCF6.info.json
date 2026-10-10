@@ -1,0 +1,9 @@
+{
+  "family": "DCF",
+  "category": "Constrained",
+  "constraints": 1,
+  "objectives": 2,
+  "description": "DCF 系列动态约束多目标测试问题 DCF6（从 DynOptForge 追加）",
+  "source_platform": "DynOptForge",
+  "name": "DCF6"
+}

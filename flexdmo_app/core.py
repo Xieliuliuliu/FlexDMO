@@ -58,7 +58,8 @@ def records(errors=None):
         for record in entries:
             if record.get("format") == "python-file":
                 continue
-            info = json.loads((Path(record["folder_name"]) / "info.json").read_text(encoding="utf-8"))
+            info_path = Path(record.get("info_path", Path(record["folder_name"]) / "info.json"))
+            info = json.loads(info_path.read_text(encoding="utf-8"))
             labels = info.get("parameter_labels", {})
             record["parameter_labels"] = labels if isinstance(labels, dict) else {}
             # Built-in components can declare types just like code plugins.
@@ -84,7 +85,7 @@ def defaults(record):
     if record.get("format") == "python-file":
         import copy
         return copy.deepcopy(record["defaults"])
-    path = Path(record["folder_name"]) / "config.json"
+    path = Path(record.get("config_path", Path(record["folder_name"]) / "config.json"))
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
@@ -94,6 +95,14 @@ def registered_class(record):
         if record.get("format") == "python-file":
             from .plugin_runtime import load_code_class
             return load_code_class(record)
+        if record.get("format") == "benchmark-file":
+            from problems.benchmark import load_benchmark_class
+            # 只允许注册表中的系列源码，不信任结果文件提供的任意模块路径。
+            source = Path(record["folder_name"]).resolve()
+            expected = ROOT / "problems" / "benchmark" / record["family"] / (record["class_name"] + ".py")
+            if source != expected.resolve():
+                raise ValueError("Benchmark 源码不在对应系列注册目录中")
+            return load_benchmark_class(record["class_name"])
         # Only load modules from the repository's discovered registry, never a
         # path supplied by a result file. Preserve relative-import support.
         folder = Path(record["folder_name"]).resolve()
@@ -333,7 +342,7 @@ def load_frames(path):
     settings = data["settings"]
     history_policy(settings.get("history_policy", "full"))
     record = next((r for r in records()["problem"] if
-                   Path(r["folder_name"]).name == settings.get("problem_class")), None)
+                   r.get("class_name", Path(r["folder_name"]).name) == settings.get("problem_class")), None)
     if record is None:
         raise ValueError("结果中的测试问题不在当前注册表中")
     params = defaults(record)

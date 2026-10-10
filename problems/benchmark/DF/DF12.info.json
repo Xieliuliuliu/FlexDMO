@@ -1,0 +1,9 @@
+{
+  "name": "DF12",
+  "family": "DF",
+  "category": "Unconstrained",
+  "constraints": 0,
+  "objectives": 3,
+  "description": "DF 系列动态多目标测试问题 DF12（从 DynOptForge 追加）",
+  "source_platform": "DynOptForge"
+}

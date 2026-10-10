@@ -82,48 +82,38 @@ def get_all_search_algorithm():
     return search_algorithms
 
 def get_all_problem():
-    # 构建目标目录路径
-    target_dir = os.path.join(PROJECT_ROOT, "problems", "benchmark")
-
     # 存储所有问题信息的列表
     problems = []
 
-    # 遍历该目录下的所有文件夹
-    for folder_name in sorted(os.listdir(target_dir)):
-        folder_path = os.path.join(target_dir, folder_name)
+    from problems.benchmark import iter_benchmarks
 
-        # 确保这是一个文件夹
-        if os.path.isdir(folder_path):
-            config_path = os.path.join(folder_path, "info.json")
-
-            # 确保config文件存在并且是文件
-            if os.path.isfile(config_path):
-                try:
-                    # 假设config文件是JSON格式，读取文件内容
-                    config_data = _read_json(config_path)
-
-                    name = config_data.get("name")
-                    if not name:
-                        raise ValueError("info.json 缺少 name")
-
-                    problems.append({
-                        "folder_name": folder_path,
-                        "name": name,
-                        "category": config_data.get(
-                            "category",
-                            "Unconstrained",
-                        ),
-                        "constraints": int(
-                            config_data.get("constraints", 0)
-                        ),
-                        "difficulty": config_data.get("difficulty", ""),
-                        "description": config_data.get(
-                            "description",
-                            "动态多目标测试问题",
-                        ),
-                    })
-                except Exception as e:
-                    print(f"Error reading config for {folder_name}: {e}")
+    # 同系列共用目录；每个问题仍有独立源码、参数和元信息。
+    # folder_name 保留原注册协议的键名，但使用源码路径作为唯一身份，
+    # 避免同系列问题共享目录导致界面选择、参数缓存和消融配置相互覆盖。
+    for family, name, source in iter_benchmarks():
+        info_path = source.with_suffix(".info.json")
+        config_path = source.with_suffix(".config.json")
+        try:
+            config_data = _read_json(info_path)
+            if config_data.get("name") != name:
+                raise ValueError(f"{info_path} 中的 name 必须为 {name}")
+            if not config_path.is_file():
+                raise ValueError(f"{name} 缺少独立配置文件")
+            problems.append({
+                "folder_name": str(source),
+                "format": "benchmark-file",
+                "class_name": name,
+                "family": family,
+                "info_path": str(info_path),
+                "config_path": str(config_path),
+                "name": name,
+                "category": config_data.get("category", "Unconstrained"),
+                "constraints": int(config_data.get("constraints", 0)),
+                "difficulty": config_data.get("difficulty", ""),
+                "description": config_data.get("description", "动态多目标测试问题"),
+            })
+        except (OSError, ValueError, TypeError) as error:
+            print(f"Error reading config for {name}: {error}")
 
     return problems
 
@@ -189,7 +179,9 @@ def get_problem_config(problem_name):
     matching_problem = find_match_problem(problem_name)
 
     if matching_problem:
-        config_path = os.path.join(matching_problem['folder_name'], "config.json")
+        config_path = matching_problem.get(
+            "config_path", os.path.join(matching_problem['folder_name'], "config.json")
+        )
         # 确保config文件存在并且是文件
         if os.path.isfile(config_path):
             try:
